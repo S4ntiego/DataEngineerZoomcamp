@@ -1,0 +1,39 @@
+# What is Mage?
+An open-source pipeline tool for orchestrating, transforming, and integrating data
+
+Projects (there can be many projects inside one instance) -> Pipelines (DAGs / Workflows) -> Blocks (Export/Transform/Load written in eg. SQL / R/ Python)
+
+Included ready-to-use blocks in the Mage:
+/ Sensors - can trigger some event
+/ Conditionals - branching logic / if else logic
+/ Dynamics - can create dynamic children
+/ Webhooks
+
+# Pipeline development with Mage
+Hybrid environment - use GUI for interactive development or blocks as testable, reusable pieces of code
+
+One Mage instance can have many projects, project can have many pipelines and pipelines can have many blocks
+
+# Mage project structure
+A *project* forms the basis for all the work we can do in Mage (think like, eg. a GitHub repo)
+It contains the code for all the pipelines, blocks and other assets
+
+A *pipeline* is a workflow that executes some data operation like extracting, transforming and loading data from API, they are also called DAGs on other platforms. Pipelines can contain blocks written in Python, SQL or R. Each pipeline is represented by a YAML file in the 'pipelines' folder of the project.
+
+A *block* is a file that can be executed independently or within a pipeline. Together, blocks form DAGs, which Mage calls Pipelines. The block won't start running unless all upstream dependencies are met. Blocks are reusable, atomic pieces of code that perform certain actions. 
+
+# Anatomy of a block
+1. imports (like import pandas as pd)
+2. decorator (@data_loader)
+3. function that has to return a dataframe
+4. assertion (@test), which will run on the output dataframe of our block
+
+The only thing that is getting executed is the code inside the function
+
+What is being returned is the return function from the block, and this is what is being passed downstream to other blocks.
+
+
+
+
+
+

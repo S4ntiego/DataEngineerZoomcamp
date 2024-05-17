@@ -1,0 +1,22 @@
+# Clone github repo and run mage & postgres in the Docker container
+https://github.com/mage-ai/mage-zoomcamp
+
+```code terminal
+git clone https://github.com/mage-ai/mage-zoomcamp.git mage-zoomcamp
+cd mage-zoomcamp
+cp dev.env .env
+docker compose build
+docker pull mageai/mageai:latest
+docker compose up
+```
+
+Mage dashboard:
+https://localhost:6789
+
+Useful commands:
+/ cp dev.env .env - copy the content of the dev.env file with env variables to .env, which will be gitignored and wont be send to the github repo
+/ docker compose build - take instructions from the docker compose file and build an image
+/ docker pull *repo* - pull the docker image from the repo
+/ docker compose up - kick off services in the docker-compose.yaml file and start running them locally
+
+
