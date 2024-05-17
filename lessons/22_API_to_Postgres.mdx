@@ -1,0 +1,122 @@
+# Create new Python API data loader in the pipeline
+
+!Knowing datatypes of your dataset is very, very important to reduce workload put on pandas!
+
+It is important in the data engineering world to list the datatypes, we can do it like that: 
+
+Look at the dataset in jupyter notebook, infer the types and build the mapping into the pipeline!
+
+```python 
+import io
+import pandas as pd
+import requests
+if 'data_loader' not in globals():
+    from mage_ai.data_preparation.decorators import data_loader
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@data_loader
+def load_data_from_api(*args, **kwargs):
+    """
+    Template for loading data from API
+    """
+    url = 'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet'
+    response = requests.get(url)
+    taxi_dtypes = {
+        'VendorID': pd.Int64Dtype(),
+        'passenger_count': pd.Int64Dtype(),
+        'trip_distance': float,
+        'RatecodeID': pd.Int64Dtype(),
+        'store_and_fwd_flag': str,
+        'PULocationID': pd.Int64Dtype(),
+        'DOLocationID': pd.Int64Dtype(),
+        'payment_type': pd.Int64Dtype(),
+        'fare_amount': float,
+        'extra': float,
+        'mta_tax': float,
+        'tip_amount': float,
+        'tolls_amount': float,
+        'improvement_surcharge': float,
+        'total_amount': float,
+        'congestion_surcharge': float 
+    }
+
+    df = pd.read_parquet(url)
+    df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
+    df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
+
+    return df
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Template code for testing the output of the block.
+    """
+    assert output is not None, 'The output is undefined'
+```
+
+with csv files we could do 
+```python    
+return pd.read_csv(url, sep=",", compression="gzip", dtype=taxi_dtypes, parse_dates=parse_dates)
+```
+to improve performance and data types, but we can't do that with parquet.
+
+# Create Python generic transformer in the same pipeline
+Let's check how many rides had 0 passengers and write a test_output, which will make us sure that the final output has 0 rides with 0 passengers after the transformation:
+```python
+if 'transformer' not in globals():
+    from mage_ai.data_preparation.decorators import transformer
+if 'test' not in globals():
+    from mage_ai.data_preparation.decorators import test
+
+
+@transformer
+def transform(data, *args, **kwargs):
+    print('Rows with zero passengers: ', {data['passenger_count'].isin([0]).sum()})
+
+    return data[data['passenger_count'] > 0]
+
+
+@test
+def test_output(output, *args) -> None:
+    """
+    Template code for testing the output of the block.
+    """
+    assert output['passenger_count'].isin([0]).sum() == 0, 'There are rides with zero passengers'
+```
+
+# Use Python data exporter to export data to Postgres instance
+```python
+from mage_ai.settings.repo import get_repo_path
+from mage_ai.io.config import ConfigFileLoader
+from mage_ai.io.postgres import Postgres
+from pandas import DataFrame
+from os import path
+
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+
+
+@data_exporter
+def export_data_to_postgres(df: DataFrame, **kwargs) -> None:
+    """
+    Template for exporting data to a PostgreSQL database.
+    Specify your configuration settings in 'io_config.yaml'.
+
+    Docs: https://docs.mage.ai/design/data-loading#postgresql
+    """
+    schema_name = 'taxi'  # Specify the name of the schema to export data to
+    table_name = 'yellow_taxi'  # Specify the name of the table to export data to
+    config_path = path.join(get_repo_path(), 'io_config.yaml')
+    config_profile = 'dev'
+
+    with Postgres.with_config(ConfigFileLoader(config_path, config_profile)) as loader:
+        loader.export(
+            df,
+            schema_name,
+            table_name,
+            index=False,  # Specifies whether to include index in exported table
+            if_exists='replace',  # Specify resolution policy if table name already exists
+        )
+```
