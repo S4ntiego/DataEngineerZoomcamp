@@ -1,0 +1,30 @@
+# Port mapping - interaction between the localhost, docker-compose and ingestion script
+Port mapping is important in such a way, that the host machine has some ports available for interaction, while, for example, pgAdmin has default port 80, and pg instance has default port 5432, if we have other instance of pg running, it will take port 5432, and we wont be able to map it like 5432:5432, but we need to use the other local port like 5431:5432 to be able to interact with our database.
+
+volume section of the docker compose must be mapped to the folder created by the user and not the root, so in case of error while trying to build the docker, instead of volumes:"./taxi:/var/lib/postgresql/data:rw", we can make a data folder in the root directory and set volumes like: "./data/taxi:/var/lib/postgresql" to preserve data in the data/taxi folder and build the docker container. Then we need to create the .dockerignore file and type ```data``` inside to mark the folder.
+
+To run the ingest script, we need to change the network under which the pg is running (docker network ls), and the host name. Don't change the port, as the script is running inside the container, so it does not goes first to localhost (5431) and then to pg (5432), but directly to pg (5432) if it was mapped like -p 5431:5432!
+
+```code terminal
+docker build -t taxi_ingest:v001
+```
+
+```code terminal
+URL="https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet"
+
+docker run -it \
+    --network=pg-network \
+    taxi_insert:v001 \
+    --user=root \
+    --password=root \
+    --host=pgdatabase \
+    --port=5432 \
+    --db_name=taxi \
+    --table_name=yellow_taxi \
+    --url=${URL}
+```
+
+Helpful commands:
+/ sudo rm -rf *docker container name* - removes the docker container
+/ docker network ls - list available networks after using docker-compose to be able to change the network in the 
+
