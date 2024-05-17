@@ -1,0 +1,39 @@
+# Create a dev profile with injected env variables
+http://localhost:6789/files -> yo.config.yaml (this is where we set our config)
+
+Create a 'dev' profile with env vars injected through Jinja templating, type at the end of the file:
+```code yo.config.yaml
+dev:
+  # PostgresSQL
+  POSTGRES_CONNECT_TIMEOUT: 10
+  POSTGRES_DBNAME: {{ env_var('POSTGRES_DBNAME') }}
+  POSTGRES_SCHEMA: {{ env_var('POSTGRES_SCHEMA') }} # Optional
+  POSTGRES_USER: {{ env_var('POSTGRES_USER') }}
+  POSTGRES_PASSWORD: {{ env_var('POSTGRES_PASSWORD') }}
+  POSTGRES_HOST: {{ env_var('POSTGRES_HOST') }}
+  POSTGRES_PORT: {{ env_var('POSTGRES_PORT') }}
+```
+
+Hit ctrl + s to save
+
+We can pull environment variables from Docker using Jinja templating {{}}
+
+# Create new pipeline
+Pipelines -> Create new pipeline -> Standard (batch):
+Name:test_config
+
+Data loader -> SQL:
+name:test_postgres
+Save and add
+
+Connection -> PostgreSQL
+Profile -> Dev
+Use raw SQL
+
+```sql test_postgres
+SELECT 1;
+```
+
+RUN (command+enter)
+
+It will initialize connection with local postgres instance (that is running in the docker through docker compose up) and run the query in the initialized postgres instance.
