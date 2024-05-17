@@ -1,0 +1,36 @@
+# What will we build?
+Extract NY_Taxi Data -> Transform and load to pg running in the docker and to the GC. The one for the google cloud, transform again using pandas, apache arrow, sql, and load to google big query.
+
+Use Mage for the orchestration, mage will live inside the docker container along with the pg.
+
+# Architecture
+Extract -> Pull data through the NYC taxi dataset API
+Transform -> Data cleaning, transformation, partitioning
+Load -> API to Mage, Mage to Postgres, Google Cloud Storage, BigQuery
+
+# What is Orchestration?
+Process of dependency managment, faciliated through *automation*
+
+The data orchestration manages scheduling, triggering, monitoring and resource allocation.
+
+- every workflow requires sequential steps
+- workflows = DAGs (directed acyclic graphs), these are pipelines
+- steps = tasks
+
+DAG is a visual representation of a workflow or a series of tasks that need to be executed in a specific order.
+
+DAG is:
+- directed (tasks follow a specific direction)
+- acyclic (no task can create data that references itself)
+- provides a visual representation of the workflow
+
+# A good orchestrator
+- workflow management
+- automation
+- error handling
+- recovery
+- monitoring, alerting
+- resource optimization
+- debugging
+- compliance / auditing
+
