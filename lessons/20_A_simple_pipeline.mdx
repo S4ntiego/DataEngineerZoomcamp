@@ -1,0 +1,17 @@
+# Example of a pipeline
+http://localhost:6789/pipelines?_limit=30 -> click on example pipeline -> edit pipeline
+
+Function to fill missing values with median:
+```python
+def fill_missing_values_with_median(df: DataFrame) -> DataFrame:
+    for col in df.columns:
+        values = sorted(df[col].dropna().tolist())
+        median_age = values[math.floor(len(values) / 2)]
+        df[[col]] = df[[col]].fillna(median_age)
+    return df
+```
+
+To run all the pipelines in one take, press three dots in a circle and then 'Execute with all upstream blocks'
+
+Useful commands:
+/ command + enter -> run mage pipeline (mage dashboard)
