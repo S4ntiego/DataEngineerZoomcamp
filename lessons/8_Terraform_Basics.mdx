@@ -1,0 +1,146 @@
+https://console.cloud.google.com/
+
+New Project -> "terraform-demo" -> create -> Switch to "terraform-demo" project ->
+IAM and admin -> Service accounts -> + create service account -> Service account name: terraform-runner -> CREATE AND CONTINUE -> Select a role -> 
+- Cloud Storage / Storage Admin (in real life we would only need bucket creator and ability to destroy buckets)
+- BigQuery / BigQuery Admin (in real life we would need to be able to create and destroy the dataset) 
+-> CONTINUE -> DONE
+
+IAM -> Service Account -> Edit principal -> + ADD ANOTHER ROLE -> 
+- Compute Engine / Compute Admin ()
+-> SAVE
+
+Service Accounts -> Actions -> Manage Keys -> ADD KEY -> Create new key -> JSON
+
+!UNAUTHORIZED PEOPLE CAN'T SEE THESE CREDENTIALS, WITH SUCH BROAD ROLES TERRIBLE THINGS LIKE MINING BITCOINS, UPLOADING ENORMOUS AMOUNT OF FILES, AND MANY OTHERS CAN HAPPEN!
+
+```code terminal
+mkdir terrademo
+cd terrademo
+mkdir keys
+cd keys
+nano my-creds.json
+```
+
+Open up and copy everything from the previously generated json key and pass it to the nano editor (right click -> paste) -> ctrl+x
+
+Open up Visual Studio Code in the terrademo directory -> Install HashiCorp Terraform extension
+
+Google Provider: https://registry.terraform.io/providers/hashicorp/google/latest/docs
+Project (Project ID): https://console.cloud.google.com/home/dashboard
+GCP Regions: https://cloud.google.com/about/locations#europe
+
+Create main.tf file and paste this provider:
+```tf
+terraform {
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = "5.29.1"
+    }
+  }
+}
+
+provider "google" {
+  #hard coding credentials is not the best idea
+  #you can also use the gcloud default auth-login command if you have google sdk to get a link to login
+  #or you can type pwd to get the current directory and then export credentials with another command like this: ```export GOOGLE_CREDENTIALS='/Users/adamksiazek/terrademo/keys/my-creds.json'```
+  credentials="./keys/my-creds.json"
+  project = "terraform-demo-423412"
+  region  = "europe-west1"
+}
+```
+
+```code
+terraform init
+```
+Terraform Google Storage Bucket: https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/storage_bucket
+Google Cloud Dashboard -> Cloud Storage -> Buckets
+
+```terraform
+resource "google_storage_bucket" "demo-bucket" {
+  #it has to be unique across the whole GCP (so we can use our projectID for example)!!
+  name          = "terraform-demo-423412-terra-bucket"
+  location      = "EU"
+  force_destroy = true
+
+  lifecycle_rule {
+    condition {
+      #in days
+      age = 1
+    }
+    action {
+      #if the upload action a very big file that was split into chunks wasn't completed during one day - abort the upload
+      type = "AbortIncompleteMultipartUpload"
+    }
+  }
+}
+```
+
+```code
+terraform plan
+```
+
+```code
+terraform apply
+```
+
+```code
+terraform destroy
+```
+
+!In case of pushing terraform code to GitHub it is very important to include .gitignore file (google terraform gitignore)!
+
+```code .gitignore
+# Local .terraform directories
+**/.terraform/*
+
+# .tfstate files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Exclude all .tfvars files, which are likely to contain sensitive data, such as
+# password, private keys, and other secrets. These should not be part of version 
+# control as they are data points which are potentially sensitive and subject 
+# to change depending on the environment.
+*.tfvars
+*.tfvars.json
+
+# Ignore override files as they are usually used to override resources locally and so
+# are not checked in
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include override files you do wish to add to version control using negated pattern
+# !example_override.tf
+
+# Include tfplan files to ignore the plan output of command: terraform plan -out=tfplan
+# example: *tfplan*
+
+# Ignore CLI configuration files
+.terraformrc
+terraform.rc
+
+# .json files with keys
+*.json
+```
+
+Helpful commands:
+/mkdir *folder name* - makes a new folder in the current directory (terminal)
+/cd *folder_name* - goes to the folder (terminal)
+/nano *file name* - opens up nano file editor (terminal)
+/ctrl+o - save file and continue editing (nano)
+/ctrl+x - save file and exit (nano)
+/cd .. - go one directory back (terminal)
+/shift+cmd+n - opens up new instance of the given program (mac)
+/terraform fmt - format terraform file, line, etc (vsc)
+/echo $GOOGLE_CREDENTIALS - test previously exported credentials
+
+ 
+

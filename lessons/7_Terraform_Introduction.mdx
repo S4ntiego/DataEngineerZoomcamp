@@ -1,0 +1,27 @@
+# Terraform
+Why Terraform?
+- Simplicity in keeping track of infrastructure (Types of storage, disks capacity, etc.)
+- Easier collaboration (Terraform files an be uploaded to eg. Github)
+- Reproducibility (In case you need to clone the infrastructure, or prepare something similar)
+- Ensure resources are removed (As resources are very expensive, it can be done with a command)
+
+What is Terraform?
+- Infrastructure as code 
+
+What Terraform is not?
+- Does not manage and update code on Infrastructure (It is not made for deploying/updating software)
+- Does not give the ability to change immutable resources (You can't change virtual machine type, because that would be destructive, change cloud storage localization, etc.)
+- Not used to manage resources defined beyond terraform files (like kubernetes cluster)
+
+Terraform lives inside the Local Machine/Virtual Machine and communicates with the Cloud (GCP/Azure/AWS, etc.) through the Provider (like GCP Provider)
+
+There is also the need to authorize the access, it can be through the access token, service account, and many others
+
+Providers
+- Code that allows terraform to communicate to manage resources on (cloud) platforms
+
+Key Terraform Commands:
+/ Init - get the providers I need, get the resources/code from the cloud to local machine
+/ Plan - show resources that will be created (What am I about to do?)
+/ Apply - go out and build that infrastructure, do what is in the terraform files
+/ Destroy - remove everything defined in the terraform files

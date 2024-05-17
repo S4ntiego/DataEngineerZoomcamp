@@ -1,0 +1,35 @@
+# Coding language
+python: https://www.python.org/downloads/
+# Local Python code environment
+vscode: https://code.visualstudio.com/docs/setup/mac
+# Containers
+docker: https://www.docker.com/products/docker-desktop/
+# Package installer
+homebrew (install, then run showed instructions): /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# Database
+postgresql: brew install postgresql
+# Online Python code environment
+jupyter notebook: pip3 install notebook
+downgrade jupyter for extensions: pip3 install --upgrade notebook==6.4.12
+jupyter autocomplete (only works with older versions of jupyter and python):
+- pip3 install jupyter_contrib_nbextensions
+- jupyter contrib nbextension install --user
+- jupyter nbextension enable hinterland/hinterland
+# Data Analysis library
+pandas: pip3 install pandas
+# Connect sql database to Python
+sqlalchemy: pip3 install sqlalchemy
+# Postgresql database adapter for Python
+psycopg: pip3 install psycopg
+psycopg pq wrapper fix: pip3 install "psycopg[binary,pool]"
+pyarrow: pip3 install pyarrow
+psycopg2: pip3 install psycopg2
+# Passing arguments to Python script
+argparse: pip3 install argparse
+# Terraform
+brew tap hashicorp/tap
+brew install hashicorp/tap/terraform
+# Google Cloud SDK
+google cloud sdk: https://cloud.google.com/sdk/docs/install-sdk
+# Anaconda
+anaconda individual edition: https://www.anaconda.com/download/success

@@ -1,0 +1,39 @@
+## How to create a dockerfile that will run Python and a specific Python script
+
+1. Create Dockerfile
+```dockerfile
+FROM python:3.9.1
+
+RUN pip install pandas
+
+WORKDIR /app
+COPY pipeline.py pipeline.py
+
+ENTRYPOINT ["python", "pipeline.py"]
+```
+
+2. Create pipeline.py
+```python
+import sys
+import pandas as pd
+
+day = sys.argv[1]
+print(f'Job finished succesfully on day:{day}')
+```
+
+3. Build docker container (-t stands for name and optional tag name:tag)
+```code
+docker build -t test .
+```
+
+4. Run previously built docker container (-it stands for interactive mode)
+```code
+docker run -it test 2022-02-12
+```
+
+Helpful commands:
+/ pwd - check current directory
+/ ls - list files in the directory
+/ docker ps - list docker containers
+/ docker kill /id/ - delete docker container  
+/ docker volume ls - list docker volumes

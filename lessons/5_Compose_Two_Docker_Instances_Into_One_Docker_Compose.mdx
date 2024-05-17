@@ -1,0 +1,33 @@
+create docker-compose.yaml file with the previous configuration
+just without the network
+
+-v or volumes are to preserve configuration and files (including db) on the local disk between running and closing containers
+
+--name is now available as pgdatabase
+
+```Dockerfile
+services:
+  pgdatabase:
+    image: postgres:13
+    environment: 
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=taxi
+    volumes:
+      - "./taxi:/var/lib/postgresql/data:rw"
+    ports:
+      - "5432:5432"
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=root
+    ports:
+      - "8080:80"
+```
+
+docker-compose up
+
+Helpful commands:
+docker-compose down - close down the docker-compose container
+docker-compose up -d - run compose in detached mode, it keeps the terminal working despite running a container

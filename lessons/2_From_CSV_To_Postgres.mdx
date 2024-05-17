@@ -1,0 +1,70 @@
+1. Create new 'taxi' folder in the current directory 
+
+2. Run docker postgres container and match local directory with container 
+database files default location
+```docker
+docker run -it \
+    -e POSTGRES_USER='root' \
+    -e POSTGRES_PASSWORD='root' \
+    -e POSTGRES_DB='taxi' \
+    -v $(pwd)/taxi:/var/lib/postgresql/data \
+    -p 5432:5432 \
+postgres:13
+```
+
+3. Open up new terminal: cmd+shift+p -> open up new external terminal 
+
+4. Connect to postgres container with pgcli for the interaction
+```code
+pgcli -h localhost -p 5432 -u root -d taxi 
+```
+
+5. Enter the previously set POSTGRES_PASSWORD
+```code
+Password for root: root
+```
+
+6. You can interact with the database
+```code
+SELECT 1;
+```
+
+7. Open up new terminal and run Jupyter Notebook
+```code
+jupyter notebook
+```
+
+8. New -> Python 3 (ipykernel) -> double click on ```Untitled.ipynb```
+
+9. Get NYC Taxi data from the [nyc gov website](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
+To connect with sqlalchemy you may need to go to /Applications/Python 3.x folder and double click the Install Certificates.command
+```python
+from time import time
+import pandas as pd
+from sqlalchemy import create_engine
+
+engine = create_engine('postgresql://root:root@localhost:5432/taxi')
+engine.connect()
+
+df = pd.read_parquet('https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet')
+df.to_csv('taxi.csv')
+df_iter = pd.read_csv('taxi.csv', iterator=True, chunksize=100000)
+
+while True:
+    time_start = time()
+    df = next(df_iter)
+    df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
+    df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
+    df.to_sql(name="yellow_taxi", con=engine, if_exists="append")
+    time_end = time()
+    print(f'Inserted chunk in {time_end - time_start}')
+```
+
+Helpful commands:
+/ pd.io.sql.get_schema(df, name='table_name') - create sql table schema from the dataframe
+/ pd.read_sql(query, con=engine) - queries the database when connection through sqlachemy is established
+/ df.head(0).to_sql(name="yellow_taxi", con=engine, if_exists="replace") - truncates the table
+
+
+
+

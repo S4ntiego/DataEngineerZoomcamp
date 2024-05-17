@@ -1,0 +1,94 @@
+# GitHub Codespaces
+Code anywhere using a web-based editor or preferred IDE (like VSC).
+It is not an equivalent of a Virtual Machine, but rather a containerized development environment based on Visual Studio Code.
+Additional tools can be installed, but with some limitations.
+
+# Create new repository and codespace
+https://github.com/new -> Create new repository with a README file
+
+https://github.com/codespaces -> New codespace
+Repository: AdamZoomcamp2024 (the one created a few seconds ago)
+Branch: main
+Region: Europe West
+Machine type: 2-core
+
+# Run Codespace in local VSCode Desktop
+Click 3 lines in the left top corner -> Open in VS Code Desktop -> Install Extension and Open URI -> Sign In
+
+# Test Codespace
+We already have Python installed with several libraries available for us thanks to the Codespace environment:
+
+```code vscode terminal
+python --version
+pip list
+```
+
+# Install Terraform and Jupyter Notebook
+Find the download link for Terraform (Ubuntu/Debian Package manager):
+```code vscode terminal
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+terraform --version
+pip install jupyter
+python -m pip install --upgrade pip
+jupyter notebook
+```
+
+Copy 127.0.0.1:8888 link and paste in the browser.
+
+You can use ctrl + c in the vscode terminal to close jupyter connection.
+
+# Create Docker network
+We can also run Docker:
+```code terminal
+docker network create pg-network
+docker volume create --name dtc_postgres_volume_local -d local
+```
+
+Docker volume creates a new directory on Codespaces VM with the name dtc_postgres_volume_local and through using -d, it stores the volume data on the host filesystem, so in Codespace VM's system (typically under /var/lib/docker/volumes/).
+
+Docker volume can be then mounted to, eg. postgres instance and any data written by the container will end up in this repository (Codespaces are ephemeral environments and thus the data won't survive the termination of the VC unless using additional steps, such as a remote volume driver).
+
+# Run Docker container with Postgres instance
+```code terminal
+docker run -it \
+-e POSTGRES_USER='root' \
+-e POSTGRES_PASSWORD='root' \
+-e POSTGRES_DB='taxi' \
+-v dtc_postgres_volume_local:/var/lib/postgresql/data \
+-p 5432:5432 \
+--network=pg-network \
+--name=pg-database \
+postgres:13
+```
+
+# Run Docker container with pgAdmin instance
+Open up new terminal and run:
+```code terminal
+docker run -it \
+-e PGADMIN_DEFAULT_EMAIL='admin@admin.com' \
+-e PGADMIN_DEFAULT_PASSWORD='root' \
+-p 8080:80 \
+--network=pg-network \
+--name=pg-admin \
+dpage/pgadmin4
+```
+
+pgAdmin is now available under localhost:8080 in the browser.
+
+# Commit changes to online Codespace from local VSCode
+Open Source Control -> Click on '+' to stage all changes (staging is like selecting files for the next commit, it gives granular control over what will be commited and whatnot) -> Type Commit Message 'My first Jupyter Notebook' -> Commit -> Sync Changes (it will push commit to repo)
+
+Check the commit in your github repository
+
+# Connect pgAdmin to Postgres instance
+http://localhost:8080/browser/ -> Add New Server -> Name: MyServer -> Connection -> 
+Host name/address: pg-database
+Username: root
+Password: root
+
+Useful commands:
+/ pip list - list installed libraries/software
+
+

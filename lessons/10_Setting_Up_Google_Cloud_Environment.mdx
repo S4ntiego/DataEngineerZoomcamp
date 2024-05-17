@@ -1,0 +1,348 @@
+Create new 'ny-rides' project: https://console.cloud.google.com/home/dashboard
+Compute Engine -> VM Instances -> Enable Compute Engine API -> Set up Free Trial & Billing
+
+# Generate SSH
+Generate SSH key to be able to log in to the Google VM instance: https://cloud.google.com/compute/docs/connect/create-ssh-keys
+- open up the terminal and create the .ssh folder:
+```code terminal
+mkdir .ssh
+cd .ssh
+```
+
+- generate ssh (passphrase/password for the key is optional):
+```code terminal
+ssh-keygen -t rsa -f gcp -C adam -b 2048
+```
+
+gcp is the private key that can't be shared with anyone
+gcp.pub is the public key
+
+GCP dashboard -> Metadata -> SSH Keys -> ADD SSH KEY -> type ```cat gcp.pub``` in terminal to show the public key and ADD ITEM in the GCP dashboard (copy the whole file with ssh-rsa and name) -> SAVE
+
+# Create VM
+VM Instances -> CREATE INSTANCE ->
+Name: de-zoomcamp
+Region: europe-west1(Belgium)
+Zone: Any
+Machine configuration: E2
+Machine type: e2-standard-4 (4 vCPU, 2core, 16gb memory)
+Boot disk -> CHANGE -> Ubuntu -> Ubuntu 20.04 LTS -> Size 30GBs -> SELECT
+CREATE
+
+# Connect through the SSH to the VM
+Copy External IP -> come back to main directory ```cd``` -> ```ssh -i ~/.ssh/gcp adam@34.38.150.114``` (34.38.150.114 is the copied External IP, -i stands for identity) -> are you sure you want to continue? Yes -> check virtual machine statistics ```htop``` -> ```ls``` to see if there are any directories/folders -> 
+
+Download and install Google Cloud SDK to interact with Google Cloud: https://cloud.google.com/sdk/docs/install-sdk
+Then init SDK with the command (in the proper directory): ```./google-cloud-sdk/bin/gcloud init```
+
+Check if everything was installed and initialized properly:
+```gcloud --version```
+
+# Create a config shortcut for the SSH connection
+Move to .ssh folder in your terminal and create the file for configuring SSH
+```code
+cd .ssh
+touch config
+```
+
+Create a config (in the .ssh folder) for SSH that contains: alias, external ip from the gcp vm dashboard, user used for generating the keys and ssh key location on the local disk:
+```code config
+Host de-zoomcamp
+Hostname 34.38.150.114
+User adam
+IdentityFile /Users/adamksiazek/.ssh/gcp
+```
+
+To run this command, we need to be in the .ssh directory!
+```code terminal
+cd ..sh
+ssh de-zoomcamp
+```
+
+# Download and install Anaconda (Python)
+Inside the VM, use wget to download the Anaconda, get the link from the anaconda website for Linux 64:
+```code terminal
+wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh
+bash Anaconda3-2024.02-1-Linux-x86_64.sh
+```
+
+Go through the license with enter and then type 'yes' to install the anaconda on your VM.
+
+```code terminal (rename /home/adam/ with ur own directory and bash with ur own shell)
+less .bashrc
+eval "$(/home/adam/anaconda3/bin/conda shell.bash hook)" 
+conda init
+python
+```
+
+Now you can type python commands on your VM through the terminal, like 
+```python terminal
+import pandas as pd 
+pd.__version__
+```
+
+# Install and update Docker
+Then, let's install docker inside the VM:
+```code terminal
+sudo apt-get install docker.io
+sudo apt-get update
+```
+
+# How to configure VSC to work with our VM
+Extensions -> Remote - SSH -> Click double arrow in the left bottom corner -> Connect to host -> de-zoomcamp (because we have already created the config file)
+
+# Clone GitHub repo inside the VM
+https://github.com/DataTalksClub/data-engineering-zoomcamp -> Code -> Copy HTTPS
+```code terminal
+git clone https://github.com/DataTalksClub/data-engineering-zoomcamp.git
+```
+
+# Give Docker permissions to run without using 'sudo' inside the VM (it won't work inside the VSC)
+Now we need to give Docker permissions to run inside the VM (run all of these commands inside the terminal): https://github.com/sindresorhus/guides/blob/main/docker-without-sudo.md
+
+# Install docker-compose, create bin folder for executables and adjust PATH to include the bin folder while looking for executables (to be able to run docker-compose from the main directory)
+Download the latest release of the Docker-compose for linux x86_64 (2.27 as of 15.05.2024): https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64
+You can find it there: https://github.com/docker/compose/releases
+
+bin - the folder where we put all the executable files
+chmod +x docker-compose-linux-x86_64 - docker_compose is executable, but the system does not know that, so we need to make it executable
+```code terminal
+mkdir bin
+cd bin/
+wget https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64
+chmod +x docker-compose-linux-x86_64
+cd
+nano .bashrc
+```
+
+Because we want to make docker-compose be visible from any directory, we want to change the PATH to tell the shell (terminal) where to look for executable programs (bin directory in our case)
+
+!:${PATH} appends the current PATH to the beginning of the new path with bin, so standard executables locations are still searched first (/usr/bin, etc.)!
+
+Scroll down to the bottom of the .bashrc file and add this line:
+export PATH="${HOME}/bin:${PATH}"
+then ```ctrl + o``` (save), enter, ```ctrl + x``` (exit)
+
+Then execute .bashrc and look for the path of the docker-compose executable, change name to docker-compose, go to 2_docker_sql of the pulled repo and run docker-compose of the .yaml file in detached mode:
+```code terminal
+source .bashrc
+which docker-compose-linux-x86_64
+cd bin
+mv docker-compose-linux-x86_64 docker-compose
+cd ..
+docker-compose version
+cd data-engineering-zoomcamp
+cd 01-docker-terraform
+cd 2_docker_sql
+docker-compose up -d
+docker ps
+```
+
+# Install pgcli on the VM to interact with the postgres container running inside the VM
+Open up another terminal and install pgcli:
+```code terminal
+cd .ssh
+ssh de-zoomcamp
+sudo apt-get install python-dev libpq-dev libevent-dev
+pip install pgcli
+pgcli -h localost -u root -d ny_taxi
+\dt
+```
+-> ctrl + d to exit
+
+# Forward port 5432 to local machine to interact with VM Postgres instance locally (remember to kill local docker containers first)
+VSC -> terminal -> PORTS -> Forward a Port -> 5432 (pg) & 8080 (pgadmin) & 8888 (jupyter)
+Create another terminal and connect with pg instance that is running on our VM from the google cloud -> ```pgcli -h localhost -u root -d ny_taxi```
+
+# Forward port 8080 to local machine to interact with VM pgAdmin instance locally (remember to kill local docker containers first)
+http://localhost:8080/ -> admin@admin.com/root
+
+# Run Jupyter on VM to run upload-data notebook
+Open up new terminal
+```code terminal
+cd .ssh
+ssh de-zoomcamp
+cd week_1-basics_n_setup
+cd 01-docker-terraform
+cd 2_docker_sql
+jupyter notebook
+```
+copy localhost link given from the command, which will look similar to this one: http://localhost:8888/tree?token=7e79e5e92157710e6099b13698b417jdbasdjhasbdjhas
+
+!Jupyter Notebook instance will run in the 2_docker_sql repository on the VM!
+
+Inside the other terminal in the same directory connected via SSH download the taxi dataset:
+```code terminal
+wget https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet
+pip install psycopg2-binary
+```
+
+# Insert data to pg instance running on the local machine through the Jupyter Notebook forwarded to our localmachine through the Visual Studio Code port forwarding (8888)
+Open up upload-data notebook and run the following commands in the Jupyter Notebook:
+```python upload-data
+import pandas as pd
+df = pd.read_parquet('yellow_tripdata_2021-01.parquet')
+df.to_csv('taxi.csv')
+df = pd.read_csv('taxi.csv', nrows=100)
+df.tpep_pickup_datetime = pd.to_datetime(df.tpep_pickup_datetime)
+df.tpep_dropoff_datetime = pd.to_datetime(df.tpep_dropoff_datetime)
+from sqlalchemy import create_engine
+engine = create_engine('postgresql://root:root@localhost:5432/ny_taxi')
+engine.connect()
+df.head(n=0).to_sql(name='yellow_taxi', con=engine, if_exists='replace')
+df.to_sql(name='yellow_taxi', con=engine, if_exists='append')
+```
+
+# Install Terraform on the VM
+Copy AMD64 Linux Terraform download link: https://releases.hashicorp.com/terraform/1.8.3/terraform_1.8.3_linux_amd64.zip
+
+Downloading and unziping Terraform will already give us access to the related commands (because it is executable file)
+```code terminal (connected to VM via SSH)
+cd bin
+wget https://releases.hashicorp.com/terraform/1.8.3/terraform_1.8.3_linux_amd64.zip
+sudo apt-get install unzip
+unzip terraform_1.8.3_linux_amd64.zip
+rm terraform_1.8.3_linux_amd64.zip
+cd
+terraform -version
+cd data-engineering-zoomcamp
+cd 01-docker-terraform
+cd 1_terraform_gcp
+```
+
+# Copy the previously generated json key from the localdisk to VM via SFTP
+Open up new terminal:
+```code terminal
+cd terrademo
+cd keys
+sftp de-zoomcamp
+mkdir keys
+cd keys
+put my-creds.json
+```
+
+# Configure Google Cloud CLI (Command Line Interface)
+We can't use oauth way to login from the remote instance! So we can't login like we did previously
+
+Activate Google Cloud:
+```code terminal
+export GOOGLE_APPLICATION_CREDENTIALS=~/keys/my-creds.json
+gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+cd
+cd data-engineering-zoomcamp
+cd 01-docker-terraform
+cd 1_terraform_gcp
+cd terraform
+cd terraform_with_variables
+terraform init
+```
+
+
+Copy the code from the previously prepared my-creds.json into the GitHub version of the key using nano:
+```nano my-creds.json```
+you can delete lines fast by pressing ctrl + k (mac)
+remember to switch the '.' to '~' in the credentials variable, then ctrl + s, then ctrl + x:
+
+or, you can also do the same after conecting SSH in your Visual Studio Code to de-zoomcamp and opening the terraform_with_variables folder and editing the variables there.
+
+```tf variables.tf
+variable "credentials" {
+    description = "My Credentials"
+    default = "~/keys/my-creds.json"
+}
+
+variable "region" {
+  description = "Region"
+  default     = "europe-west1"
+}
+
+variable "project" {
+  description = "Project"
+  default     = "terraform-demo-423412223"
+}
+
+variable "location" {
+  description = "Project Location"
+  default     = "EU"
+}
+
+variable "gcs_bucket_name" {
+  description = "My Storage Bucket Name"
+  default     = "terraform-demo-423412223-terra-bucket"
+}
+
+variable "bq_dataset_name" {
+  description = "My BigQuery Dataset Name"
+  default     = "demo_dataset"
+}
+
+variable "gcs_storage_class" {
+  description = "Bucket Storage Class"
+  default     = "STANDARD"
+}
+```
+
+# Init Terraform from the VM
+```code
+terraform plan
+```
+
+Then, create the bucket on GCP through the Terraform running on Virtual Machine, it will create resources as stated in the main.tf file, so the google storage bucket and google bigquery dataset:
+
+```code
+terraform init
+```
+
+# Stop or delete the VM
+To stop the VM from the terminal:
+```code terminal
+sudo shutdown
+```
+or you can use the Google Cloud Dashboard and press 3 dots then click Stop or Delete
+
+We can start the VM again through the Google Cloud Dashboard, but we must change the external IP in our config:
+```code terminal
+nano .ssh/config
+ssh de-zoomcamp
+```
+
+After turning our VM offline and then online again and loggin in, we will still have docker-compose, anaconda, etc. If we will remove VM, it will also remove all the data, along with anaconda, docker and so on.
+
+While VM instance is stopped, we are not being charged for the computing time, but we will still be charged for the disk storage that is taken by all the programs there.
+
+# Summary
+1. Generate SSH key
+2. Create VM instance on the Google Cloud
+3. Connect to the VM through the SSH command or make a config shortcut in the .ssh folder
+4. Download Docker, Anaconda, and other libraries/software
+5. Connect VSC to VM via SSH (Remote-SSH extension) and open ports 5432, 8080, 8888
+6. Give Docker permissions not to use sudo all the time, Install Docker-Compose and create bin folder, make docker-compose an executable file (chmod +x) and move it to bin
+7. Edit .bashrc file with nano to look for the bin path: export PATH="${HOME}/bin:${PATH}"
+8. Run docker-compose to run pg instance and pgAdmin instance
+9. Install pgcli
+10. Run Jupyter Notebook and insert data with the previously prepared script to the VM postgres instance
+11. Install Terraform on the VM and copy service account json key via SFTP to our VM instance
+12. Configure the connection with Google Cloud: 
+export GOOGLE_APPLICATION_CREDENTIALS=~/keys/my-creds.json
+gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS
+13. Init Terraform from the VM
+
+Helpful commands:
+/ shift+cmd+. - show hidden files in a directory (including .ssh folder) (terminal)
+/ less *file name*- less is a command line utility that displays the contents of a file or a command output, one page at a time (terminal)
+/ which python3 - localization of a program/file (terminal)
+/ source - executes a program in the current shell (linux terminal)
+/ ssh - secure shell access (terminal)
+/ shift + cmd + p -> open up help menu in VSC (VSC)
+/ ctrl + d - to log out of the VM (terminal)
+/ ctrl + shift + ` - open up new terminal in VSC (VSC, mac)
+/ docker run -it ubuntu bash - run ubuntu container starting from the bash shell (terminal)
+/ mv *old_file_name* *new_file_name* - change file name (terminal)
+/ docker ps - list all running containers (add --all to see all containers)
+/ df.head(n=0).to_sql(name='yellow_taxi', con=engine, if_exists='replace') - transfer schema from csv to sql table called 'yellow_taxi' in this case (python), also clear the table if exists
+/ dt - list data tables in pgcli (pgcli)
+/ rm *file name* - removes the file (terminal)
+/ chmod +x *file name* - make file executable
+/ sftp *config* - establishes sftp connection to transfer files
+/ put *file name* - copy the file
+/ sudo shutdown -h now - -h stands for halt, shutdown the computer now, without waiting for the scheduled time (including shutdown of the VM)

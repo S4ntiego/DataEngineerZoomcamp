@@ -1,0 +1,102 @@
+```python
+import pandas as pd
+from sqlalchemy import create_engine
+engine = create_engine('postgresql://root:root@localhost:5432/taxi')
+engine.connect()
+df = pd.read_csv('taxi+_zone_lookup.csv')
+df.to_sql(name='zones', con=engine, if_exists='replace')
+```
+
+```sql
+SELECT  tpep_pickup_datetime
+		, tpep_dropoff_datetime
+		, total_amount
+		, CONCAT(zpu."Borough", ' / ', zpu."Zone") as put_location
+		, CONCAT(doz."Borough", ' / ', doz."Zone") as dropout_location
+FROM yellow_taxi AS yt
+INNER JOIN zones AS zpu
+ON zpu."LocationID" = yt."PULocationID"
+INNER JOIN zones AS doz
+ON doz."LocationID" = yt."DOLocationID"
+LIMIT 100
+
+SELECT  tpep_pickup_datetime
+		, tpep_dropoff_datetime
+		, total_amount
+		, CONCAT(zpu."Borough", ' / ', zpu."Zone") as put_location
+		, CONCAT(doz."Borough", ' / ', doz."Zone") as dropout_location
+FROM    yellow_taxi AS yt
+        , zones zpu
+        , zones doz
+WHERE
+        yt."PULocationID" = zpu."LocationID"
+        AND yt."DOLocationID" = doz."LocationID"
+LIMIT 100
+
+SELECT  tpep_pickup_datetime
+		, tpep_dropoff_datetime
+		, total_amount
+		, "PULocationID"
+		, "DOLocationID"
+FROM    yellow_taxi AS yt
+WHERE   "PULocationID" IS NULL
+OR      "DOLocationID" IS NULL
+
+SELECT  tpep_pickup_datetime
+		, tpep_dropoff_datetime
+		, total_amount
+		, "PULocationID"
+		, "DOLocationID"
+FROM 	yellow_taxi AS yt
+WHERE NOT EXISTS (
+	SELECT *
+	FROM zones AS z
+	WHERE z."LocationID" = yt."DOLocationID"
+)
+
+DELETE FROM zones WHERE "LocationID" = 142
+
+SELECT  tpep_pickup_datetime
+		, tpep_dropoff_datetime
+		, total_amount
+		, CONCAT(COALESCE(zpu."Borough", 'unknown'), ' / ', COALESCE(zpu."Zone", 'unknown')) as put_location
+		, CONCAT(COALESCE(doz."Borough", 'unknown'), ' / ', COALESCE(doz."Zone", 'unknown')) as dropout_location
+FROM yellow_taxi AS yt
+LEFT JOIN zones AS zpu
+ON zpu."LocationID" = yt."PULocationID"
+LEFT JOIN zones AS doz
+ON doz."LocationID" = yt."DOLocationID"
+LIMIT 100
+
+SELECT  tpep_pickup_datetime
+		, DATE_TRUNC('DAY', tpep_pickup_datetime)
+		, CAST(tpep_pickup_datetime AS DATE)
+		, DATE(tpep_pickup_datetime)
+		, EXTRACT('DAY' FROM tpep_pickup_datetime)
+FROM    yellow_taxi AS yt
+LIMIT 100
+
+SELECT  CAST(tpep_pickup_datetime AS DATE) AS "day"
+		, COUNT(*)
+FROM    yellow_taxi AS yt
+GROUP BY "day"
+ORDER BY "day" ASC
+
+SELECT  CAST(tpep_pickup_datetime AS DATE) AS "day"
+		, COUNT(*) AS "count"
+		, MAX(total_amount)
+		, MAX(passenger_count)
+FROM    yellow_taxi AS yt
+GROUP BY "day"
+ORDER BY "count" DESC
+
+SELECT  CAST(tpep_pickup_datetime AS DATE) AS "day"
+		, "DOLocationID"
+		, COUNT(*) AS "count"
+		, MAX(total_amount)
+		, MAX(passenger_count)
+FROM    yellow_taxi AS yt
+GROUP BY 1, 2
+ORDER BY "day" ASC
+		, "DOLocationID" ASC
+```

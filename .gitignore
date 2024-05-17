@@ -1,0 +1,6 @@
+# Ignored folders
+taxi/
+
+# Ignored files
+*.csv
+*.parquet
