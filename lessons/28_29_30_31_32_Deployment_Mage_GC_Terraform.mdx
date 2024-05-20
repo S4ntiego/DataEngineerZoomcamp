@@ -1,0 +1,60 @@
+# Prerequisites
+
+- Terraform installed on a local machine
+- Google Cloud SDK (to authenticate)
+- Google Cloud permissions to allow service account to create resources necessary for the project
+- Mage Terraform templates
+
+# Google Cloud permissions
+
+Google Cloud Dashboard -> IAM -> Appropriate User
+
+If you have "Owner" role, then it will work, but these permissions are really broad, and can do almost anything, so they are not safe
+
+If you want to be granular, the most basic permissions to deploy the Mage with Terraform are:
+- Artifact Registry Reader
+- Artifact Registry Writer
+- Cloud Run developer
+- Cloud SQL Admin
+- Service Account Token Creator
+
+# Deploying to Google Cloud
+
+```terminal
+gcloud auth list - accounts that are authorized
+```
+
+```terminal
+git clone https://github.com/age-ai/mage-ai-terraform-templates.git
+cd mage-ai-terraform-tempaltes
+ls -la
+cd gcp
+ls -la
+```
+
+In variables.tf, set the project_id default value to your GCP project ID.
+Enable the Cloud Filestore API:
+Visit the Google Cloud Console.
+Navigate to "APIs & Services" > "Library."
+Search for "Cloud Filestore API."
+Click on the API and enable it.
+To perform the deployment:
+terraform init
+
+```code
+terraform apply
+```
+
+Then whitelist your IP to make Mage running on GCP accessible for you.
+
+Develop locally -> Sync github repo with Mage via the settings -> Push to github repo
+
+How to delete Mage cluster in GCP that was deployed through Terraform?
+```terminal
+terraform destroy
+```
+
+
+
+
+
