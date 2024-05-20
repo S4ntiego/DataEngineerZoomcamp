@@ -1,0 +1,48 @@
+Data engineers often send data from api to GCS or other kind of storage, because it is much cheaper than the database.
+
+# Batch pipeline
+
+Create new batch pipeline -> drag load_api_data.py from the data_loaders folder -> drag transform_taxi_data.py from the transformers folder -> attach data_loader to transformer on the graph on the right side of the screen -> new exporter python gcs -> change bucket name to yours and object_key to desirable format and name
+
+```python
+bucket_name = 'mage-zoomcamp-adam'
+object_key = 'ny_taxi_data.parquet'
+```
+
+# Export dataframe data in partitions to GCS using pyarrow
+os.environ['GOOGLE_APLICATION_CREDENTIALS'] - set environment variable for the authentication key
+
+
+```python 
+import pyarrow as pa
+import pyarrow.parquet as pq
+import os
+
+if 'data_exporter' not in globals():
+    from mage_ai.data_preparation.decorators import data_exporter
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "/home/src/ny-rides-adam-bd5526ef63b4.json"
+
+bucket_name = "mage-zoomcamp-adam"
+object_key = "nyc_taxi_data.parquet"
+project_id = "ny-rides-adam"
+table_name = 'nyc_taxi_data'
+root_path = f'{bucket_name}/{table_name}'
+
+@data_exporter
+def export_data_to_google_cloud_storage(data, *args, **kwargs):
+    #create date column from the datetime
+    data['tpep_pickup_date'] = data['tpep_pickup_datetime'].dt.date
+    #create pyarrow table from pandas dataframe
+    table = pa.Table.from_pandas(data)
+    #authorize using environment variable
+    gcs = pa.fs.GcsFileSystem()
+    #write to gcs in partitions
+    pq.write_to_dataset(
+        table,
+        root_path=root_path,
+        partition_cols=['tpep_pickup_date'],
+        filesystem=gcs 
+    )
+```
+
