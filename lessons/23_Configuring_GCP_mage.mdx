@@ -1,0 +1,68 @@
+# Google Cloud Storage
+https://console.cloud.google.com/storage/create-bucket
+
+GCP Dashboard -> Google Cloud Storage -> Create a bucket
+
+Name: must be unique globally
+Where to store data: EU multiregion
+Storage class: standard
+Control access: enforce public access prevention
+
+CREATE
+
+# Service Account
+Service account -> create new -> mage-zoomcamp -> role: Owner -> DONE
+
+Service account -> Keys -> Add key -> Create new key -> JSON -> it will download JSON file, copy it to the mage project
+
+In docker-compose when we define volume like this: ```code - .:/home/src/ ```, it means that we will pull the whole . directory into the /home/src/ in the Mage container, including our json key
+
+# Connect GCP with Mage
+
+go into localhost:6789/files and delete this part of the io_config.yaml code:
+```code
+GOOGLE_SERVICE_ACC_KEY:
+    type: service_account
+    project_id: project-id
+    private_key_id: key-id
+    private_key: "-----BEGIN PRIVATE KEY-----\nyour_private_key\n-----END_PRIVATE_KEY"
+    client_email: your_service_account_email
+    auth_uri: "https://accounts.google.com/o/oauth2/auth"
+    token_uri: "https://accounts.google.com/o/oauth2/token"
+    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs"
+    client_x509_cert_url: "https://www.googleapis.com/robot/v1/metadata/x509/your_service_account_email"
+```
+
+In the Mage terminal you can use command 
+```code
+ls -la
+```
+
+to list all the files, and copy name of the json key. Go back to files, and paste it into the GOOGLE_SERVICE_ACC_KEY_FILEPATH adding /home/src/ at the beginning:
+```code
+GOOGLE_SERVICE_ACC_KEY_FILEPATH: "/home/src/ny-rides-adam-bd5526ef63b4.json"
+```
+
+Go to test_config pipeline, change PostgreSQL to BigQuery, dev to default and run the query.
+
+# Generate, upload titanic_clean.csv file to gcp and load data from this file directly from gcp to Mage
+
+RUN example_pipeline to generate titanic.csv in the root directory
+
+GCP Dashboard -> Google Cloud Storage -> Buckets -> Open mage zoomcamp bucket -> Upload titanic_clean.csv
+
+
+Go to pipelines in Mage dashboard -> delete test_config -> create new test_gcs -> new data loader Python GCS:
+Change to your own bucket name and file name:
+```python
+bucket_name = 'mage-zoomcamp-adam'
+object_key = 'titanic_clean.csv'
+```
+
+
+
+
+
+
+
+
