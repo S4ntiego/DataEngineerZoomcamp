@@ -1,0 +1,57 @@
+```terminal
+docker run hello-world
+docker run -it ubuntu bash
+docker run -it --entrypoint=bash python:3.9
+```
+
+```dockerfile
+FROM python:3.9
+
+RUN pip install pandas
+
+ENTRYPOINT ["bash"]
+```
+
+```dockerfile
+FROM python:3.9
+
+RUN pip install pandas
+
+WORKDIR /app
+
+COPY pipeline.py pipeline.py
+
+ENTRYPOINT ['python', 'pipeline.py']
+```
+
+```python pipeline.py
+import sys
+import pandas as pd
+
+day = sys.argv[1]
+
+print(f'job finished on day {day}')
+```
+
+# Run postgres docker container
+```terminal
+docker run -it \
+-e POSTGRES_USER="root" \
+-e POSTGRES_PASSWORD="root" \
+-e POSTGRES_DB="ny_taxi" \
+-v ${pwd}/ny_taxi_postgres_data:/var/lib/postgresql/data \
+-p 5432:5432 \
+postgres:13
+```
+
+if encountering the operation not permitted error:
+```terminal
+docker volume create --name dtc_postgres_volume_local -d local
+docker run -it \
+-e POSTGRES_USER="root" \
+-e POSTGRES_PASSWORD="root" \
+-e POSTGRES_DB="ny_taxi" \
+-v dtc_postgres_volume_local:/var/lib/postgresql/data \
+-p 5432:5432 \
+postgres:13
+```
