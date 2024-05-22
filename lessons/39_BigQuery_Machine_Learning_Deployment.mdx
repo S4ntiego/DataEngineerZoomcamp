@@ -1,0 +1,23 @@
+# Steps to run the container with Tensorflow and send POST request to predict the tip
+```code terminal
+#login to google cloud sdk
+gcloud auth login
+#export the model from bigquery to google cloud storage
+bq --project_id ny-rides-adam extract -m ny_taxi.tip_model gs://mage-zoomcamp-adam/tip_model
+#create /tmp/model folder
+mkdir /tmp/model
+#copy data from google cloud storage to local machine to /tmp/model folder, cp is copy, -r is recursive copy, so copy the whole source directory
+gsutil cp -r gs://mage-zoomcamp-adam/tip_model /tmp/model
+#create new folder
+mkdir -p serving_dir/tip_model/1
+#copy from one directory to another
+cp -r /tmp/model/tip_model/* serving_dir/tip_model/1
+#download the latest tensorflow/serving docker image
+docker pull tensorflow/serving
+#run tensorflow container with our tip model, --mount type=bind mounts local directory into the container at /models/tip_model, any changes in the local directory will be reflected in the container thanks to bind, IMPORTANT, ON MAC M1 YOU NEED TO DISABLE *Use Rosetta for x86/amd64 emulation on Apple Silicon* IN THE DOCKER DESKTOP SETTINGS
+docker run -p 8501:8501 --mount type=bind,source=/Users/adamksiazek/serving_dir/tip_model,target=/models/tip_model -e MODEL_NAME=tip_model -t tensorflow/serving &
+# Send the POST request to tensorflow with the attributes required by the model to predict the tip amount
+curl -d '{"instances": [{"passenger_count":1, "trip_distance":12.2, "PULocationID":"193", "DOLocationID":"264", "payment_type":"2","fare_amount":20.4,"tolls_amount":0.0}]}' -X POST http://localhost:8501/v1/models/tip_model:predict
+```
+
+http://localhost:8501/v1/models/tip_model
