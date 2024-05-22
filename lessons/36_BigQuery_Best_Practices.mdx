@@ -1,0 +1,20 @@
+# Cost Reduction
+- avoid SELECT *
+- price queries before running them
+- use partitioned/clustered tables
+- use streaming inserts with caution
+- materialize query results in stages
+
+# Query performance
+- filter on partitioned/clustered columns
+- denormalize data (so that you can use less joins)
+- use nested or repeated columns
+- use external data sources appropriately
+- reduce data before using a join
+- do not treat WITH clasus as prepared statements
+- avoid oversharding tables (shards are like partitions, don't create tables with too many of partitions if their size is relatively small, less than 1GB)
+- don't use external data sources in case you want high query performance
+- avoid JavaScript user-defined functions
+- order last
+- optimize join patterns
+- place the table with the largest number of rows first, followed by the table with fewest rows, and then place the remaining tables by decreasing size
