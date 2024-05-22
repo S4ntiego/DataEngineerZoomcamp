@@ -1,0 +1,51 @@
+# Analytics Engineering Basics
+Analytics Engineer introduces the good software engineering practices to the efforts of data analysts and data scientists, AE bridges the gap between Data Engineers and Data Analysts
+
+# Tooling
+- Data Loading: Airflow, Mage, SSIS
+- Data Storing: Snowflake/BigQuery/Redshift/Databricks
+- Data Modelling: dbt/Dataform
+- Data Presentation: Tableau, Looker, PowerBi, Google Data Studio
+
+# ETL vs ELT
+ETL: more stable and compliant, higher storage and compute costs
+ELT: faster and more flexible, lower cost and lower maintenance
+
+# Kimball's Dimensional Modelling
+Objective: 
+- Deliver data understandable to the business users
+- Deliver fast query performance
+
+Prioritise user understandability and query performance over getting rid of duplicates.
+
+Other approaches:
+- Data Vault
+- Bill Inmon
+
+# Elements of Dimensional Modeling
+Star schema, Facts tables and Dimensions tables
+
+Facts:
+- measurements, metrics, facts
+- correspons to a business process
+- verbs (czasowniki in Polish)
+
+Dimensions:
+- provide context for the facts
+- corresponds to a business entity, not the process
+- nouns (rzeczowniki in Polish)
+
+# Architecture of Dimensional Modeling
+Stage area (Ingredients, give them to cookers):
+- contains raw data
+- not means to be exposed to everyone, only to people who will know how to process raw data into data models
+
+Processing area (Cookers): 
+- from raw data to data models
+- focuses in efficiency
+- ensuring standards
+
+Presentation area (Guests at the restaurant, enjoying our meal):
+- exposure to business stakeholder
+
+
