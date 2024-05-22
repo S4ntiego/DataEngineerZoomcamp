@@ -1,0 +1,19 @@
+# Big Query Clustering
+
+- order of the columns is important, clustering by a, b, c will sort first by a, then by b, then by c
+- table with data size < 1gb don't show significant improvement with partitioning and clustering
+- clustering improves aggregate queries and filter queries
+- we can specify up to 4 clustering columns
+
+# Partitioning vs Clustering
+
+Clustering - cost benefit unknown, more granularity, filters or aggregation against multiple particular columns, cardinality of the number of values in a column or group of columns is large
+
+Partitioning - cost known upfront, filter or aggregate on single column, partition-level management, partitioning is only possible on one column, there can be only 4000 partitions per table
+
+# Clustering over partitioning
+
+- if partitioning results in a small amount of data per partition (apx. less than 1GB)
+- if partitioning results in a number of partitions beyond the limits (> 4000)
+- if we often write data to bigquery that modifies all the partitions
+
