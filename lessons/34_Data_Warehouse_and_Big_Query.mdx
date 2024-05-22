@@ -1,0 +1,103 @@
+# BigQuery, OLTP vs OLAP
+
+OLTP - Online Transaction Processing
+OLAP - Online Analytical Processing
+
+*OLTP* - essential business operations in real time, short and fast updates initiated by the user, normalized databases for efficiency (foreign keys in main table related to primary keys in dimensional tables, like brand id, brand id brand name), customer-facing personnel, online shoppers, small space requirements if historical data is archived, regular backups required, lists day-to-day transactions
+
+*OLAP* - denormalized data, brand name can be stored in the same table and contain duplicated data, analytical purposes, large datasets, data periodically refreshed through jobs, purpose to plan, solve problems, discover hidden insights, multi-dimensional view of enterprise data, data analysts, business analysts, executives use this data, lost data can be reloaded from OLTP database
+
+data warehouse - olap solution, used for reporting and data analysis, consists of meta data, raw data and summary data, data from data warehouse may be then stored in different data marts for different purposes, purchasing, sales, inventory, etc.
+
+*BigQuery* - serverless data warehouse, software as well as infrastructure included, build-in features like:
+- machine learning
+- geospatial analysis
+- business intelligence
+It separates the compute engine that analyzes the data from the storage
+
+BigQuery contains some publicly available datasets in the bigquery-public-data catalog, like new york citibike data that gathers data starting from 2013:
+```sql
+SELECT station_id, name
+FROM bigquery-public-data.new_york_citibike.citibike_stations
+LIMIT 100;
+```
+
+# External table from a gcs file (parquet, csv, etc)
+
+We can also create external table referring to gcs path, ny-rides-adam refers to the project in bigquery, ny_taxi to dataset in bigquery, and external_taxi to new table name. uris refer to project and location of the file on the google cloud storage drive:
+```sql
+CREATE OR REPLACE EXTERNAL TABLE `ny-rides-adam.ny_taxi.external_taxi`
+OPTIONS (
+  format = 'PARQUET',
+  uris = ['gs://mage-zoomcamp-adam/taxi_parquet.parquet']
+)
+```
+
+```sql
+SELECT *
+FROM ny-rides-adam.ny_taxi.external_taxi
+LIMIT 10;
+```
+
+# Partitions
+
+We can also create a non partitioned table from external table:
+```sql
+CREATE OR REPLACE TABLE ny-rides-adam.ny_taxi.external_taxi_non_partitioned AS
+SELECT * FROM ny-rides-adam.ny_taxi.external_taxi
+```
+
+And a partitioned table (eg. by the the date extracted from tpep_pickup_datetime):
+```sql
+CREATE OR REPLACE TABLE ny-rides-adam.ny_taxi.external_taxi_partitioned 
+PARTITION BY 
+DATE(tpep_pickup_datetime) AS
+SELECT * FROM ny-rides-adam.ny_taxi.external_taxi
+```
+
+Let's check the impact of partitioning:
+```sql
+SELECT DISTINCT(VendorID)
+FROM ny-rides-adam.ny_taxi.external_taxi_partitioned 
+WHERE DATE(tpep_pickup_datetime) BETWEEN '2021-01-01' AND '2021-01-30' 
+```
+
+```sql
+SELECT DISTINCT(VendorID)
+FROM ny-rides-adam.ny_taxi.external_taxi_non_partitioned 
+WHERE DATE(tpep_pickup_datetime) BETWEEN '2021-01-01' AND '2021-01-30' 
+```
+
+Let's look into partitions:
+```sql
+SELECT table_name, partition_id, total_rows
+FROM ny_taxi.INFORMATION_SCHEMA.PARTITIONS
+WHERE table_name='external_taxi_partitioned'
+ORDER BY total_rows DESC
+```
+
+# Clusters
+
+Let's create a partition and cluster table:
+```sql
+CREATE OR REPLACE TABLE ny-rides-adam.ny_taxi.external_taxi_partitioned_clustered 
+PARTITION BY 
+DATE(tpep_pickup_datetime) 
+CLUSTER BY VendorID AS
+SELECT * FROM ny-rides-adam.ny_taxi.external_taxi
+```
+
+Let's find the number of rides where VendorId is equal to 1:
+```sql
+SELECT COUNT(*) AS trips
+FROM ny-rides-adam.ny_taxi.external_taxi_partitioned_clustered
+WHERE 1=1
+AND DATE(tpep_pickup_datetime) BETWEEN '2021-01-01' AND '2021-01-30'
+AND VendorID=1
+```
+
+
+
+
+
+
