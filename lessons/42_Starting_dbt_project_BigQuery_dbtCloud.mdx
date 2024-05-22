@@ -1,0 +1,28 @@
+# Starter project
+Option A, CLI:
+install dbt locally, setup the profiles.yml, run dbt init
+
+Option B, dbt cloud:
+set up dbt cloud credentials (repo and dwh), start from web-based IDE
+
+Option A:
+1. Clone the zoomcamp github repository
+2. Set up dbt account, connect the dbt with the google cloud json key
+3. Connect with the newly cloned github repo
+4. Edit the default, 'analytics' project, change project name to 'taxi', and project subdirectory to 04-anaytics-engineering/taxi_rides_ny to include only the related folder from the whole repo
+5. On the navbar click the Develop -> Cloud IDE
+6. Create new branch 'de-zoomcamp-videos'
+7. Delete the taxi_rides_ny folder from the repo and commit stages (commit and sync -> "delete")
+8. Initialize dbt project, then go to 'dbt_project.yml' file
+9. Change name to 'taxi' and swap 'my-new-project' to 'taxi' under models:, delete the example with materialized table, so the below fragment, because it adds materialization table to all models:
+```code
+ # Applies to all files under models/example/
+    example:
+      +materialized: table
+```
+10. Run dbt build command at the bottom:
+```code
+dbt build
+```
+11. Commit changes 'init my dbt project'
+
