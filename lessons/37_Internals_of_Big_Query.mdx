@@ -1,0 +1,12 @@
+# Structure of the BigQuery
+
+BigQuery consists of two different hardware modules - one responsible for storage and one for computing
+
+*Colossus* is a relatively cheap storage system, while the *Dremel* is responsible for the computing process, this is the query execution engine.
+
+Both of these hardware solutions talk to each other thanks to the *Jupiter* connection/network, which speed is approx. 1tb/s.
+
+So we have the advantage of separate hardware for storage and computing.
+
+Record-oriented storage is similar to CSV, BigQuery uses column-oriented storage structure, which helps us with aggregation of columns. And we do not query all the columns. 
+
