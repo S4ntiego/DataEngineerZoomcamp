@@ -1,0 +1,128 @@
+# Tests
+- assumptions that we make about our data
+- tests in dbt are essentialy a select sql query
+- these assumptions get compiled to sql that returns the amount of failing records
+- tests are defined on a column in the .yml file
+- dbt provides basic tests to check if the columns values are:
+    - unique
+    - not null
+    - accepted values
+    - a foreign key to another table
+- you can create your custom tests as queries
+
+# Monthly revenue model
+
+Create a *dm_monthly_zone_revenue.sql* datamart in the models/core folder and copy the content from the data engineering zoocamp repo https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/04-analytics-engineering/taxi_rides_ny/models/core/dm_monthly_zone_revenue.sql:
+
+```sql dm_monthly_zone_revenue.sql
+{{ config(materialized='table') }}
+
+with trips_data as (
+    select * from {{ ref('fact_trips') }}
+)
+    select 
+    -- Reveneue grouping 
+    pickup_zone as revenue_zone,
+    {{ dbt.date_trunc("month", "pickup_datetime") }} as revenue_month, 
+
+    service_type, 
+
+    -- Revenue calculation 
+    sum(fare_amount) as revenue_monthly_fare,
+    sum(extra) as revenue_monthly_extra,
+    sum(mta_tax) as revenue_monthly_mta_tax,
+    sum(tip_amount) as revenue_monthly_tip_amount,
+    sum(tolls_amount) as revenue_monthly_tolls_amount,
+    sum(ehail_fee) as revenue_monthly_ehail_fee,
+    sum(improvement_surcharge) as revenue_monthly_improvement_surcharge,
+    sum(total_amount) as revenue_monthly_total_amount,
+
+    -- Additional calculations
+    count(tripid) as total_monthly_trips,
+    avg(passenger_count) as avg_monthly_passenger_count,
+    avg(trip_distance) as avg_monthly_trip_distance
+
+    from trips_data
+    group by 1,2,3
+```
+
+dbt.date_trunc is a cross-database macro provided by dbt, so it will work even if we change the providers (postgres, oracle, bigquery, etc., these have different syntax for dates and so on):
+https://docs.getdbt.com/reference/dbt-jinja-functions/cross-database-macros
+
+let's also add another package to *packages.yml* (https://hub.getdbt.com/dbt-labs/codegen/latest/):
+```code packages.yml
+ - package: dbt-labs/codegen
+    version: 0.12.1
+```
+and run ```dbt deps```
+
+Now, let's generate yaml for our models with codegen:
+```code terminal
+{% set models_to_generate = codegen.get_models(directory='staging', prefix='stg') %}
+{{ codegen.generate_model_yaml(
+    model_names = models_to_generate
+) }}
+```
+It gave us yaml for all of the columns and datatypes, paste it into the schema.yml.
+
+To tripid add the following tests:
+```code schema.yml
+tests:
+          - unique:
+              severity: warn
+          - not_null:
+              severity: warn
+```
+
+And these to dropoff and pickup locationid:
+```code schema.yml
+tests:
+          - relationships:
+              to: ref('taxi_zone_lookup')
+              field: locationid
+              severity: warn
+```
+
+to dbt_project.yml add the following variables shared between files in the project:
+```code dbt_project.yml
+vars:
+  payment_type_values: [1, 2, 3, 4, 5]
+```
+
+so we can use the same variable in the payment_type column tests like this, we need to add quote:false for bigquery, otherwise it will fail:
+```code schema.yml
+tests:
+          - accepted_values:
+              values: "{{ var('payment_type_values') }}"
+              severity: warn
+              quote: false
+```
+
+Now, let's run dbt build to see how our build manages the tests:
+```code terminal
+dbt build
+```
+
+# Documentation
+- dbt provides a way to generate documentation for your dbt project and render it as a website
+- the documentation for your project includes:
+    - information about the project:
+        - model code (both from the .sql file and compiled)
+        - model dependencies
+        - sources
+        - auto generated DAG from the red and source macros
+        - descriptions (from the schema.yml file) and tests
+    - information about the data warehouse (information_schema):
+        - column names and data types
+        - table stats like size and rows
+- dbt docs can also be hosted in dbt cloud
+
+You can describe all the columns in the schema.yml files! For our models, you can also copy schema.yml files from the zoomcamp repo: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/04-analytics-engineering/taxi_rides_ny/models
+
+Remember to swap the tripdata words to taxi and to include your tables and schemas.
+
+Now run the generation of the docs:
+```code terminal
+dbt docs generate
+```
+
