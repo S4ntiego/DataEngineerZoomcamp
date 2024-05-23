@@ -1,0 +1,390 @@
+# Materializations in dbt cloud
+1. Ephemeral - temporary, exist for a single dbt run (similar to CTE, common table expression in SQL, "with kappa as...")
+2. View - virtual tables that can be queries like normal tables, but with included filters, groups, etc
+3. Table - physical representation of data, created and stored in a database
+4. Incremental - efficient updates to existing tables, reducing the need for full data refreshes
+
+# Modular data modeling
+*Sources*: green taxi data, yellow taxi data, taxi zone lookup
+
+Sources: 
+- data that we loaded into the warehouse as sources for our models, 
+- configuration defined in the yml files in the models folder, 
+- used with the source macro that will resolve the name to the right schema, plus build the dependencies automatically,
+- source freshness can be defined and tested
+
+Seeds:
+- CSV/Parquet files stored in our repository under the *seed* folder,
+- Benefits of version controlling,
+- Equivalent to a copy command,
+- Recommended for data that doesn't change frequently,
+- Runs with ```code dbt seed -s file_name```
+
+Refs:
+- macro to reference the underlying tables and views that were building the data warehouse
+- run the same code in any environment
+- automatically build dependencies
+```sql {{ ref('stg_green_taxi')}}``` in, eg., production, will resolve to from ```sql "production"."dbt_adam_ksiazek"."stg_green_taxi"```
+
+Macros:
+- use control structures (like if statements or for loops) in SQL
+- use environment variables in the dbt project for production deployments
+- operate on the results of one query to generate another query
+- abstract snippets of sql into reusable macros (analogous to functions in most programming languages)
+
+Packages:
+- like libraries in other programming languages
+- standalone dbt projects, with models and macros that tackle a specific problem area
+- imported in the packages.yml file and imported by running ```dbt deps```
+- a list of useful packages can be find in *dbt package hub*
+- by adding a package to the project, the package's models and macros will become part of your own project
+
+Variables:
+- useful for defining values that should be used across the project
+- with a macro, dbt allows us to provide data to models for compilation
+- to use a variable, we use the ``` --vars '{'...'}'``` function
+- variables can be defined in two ways: in the dbt_project.yml file, or in the command line
+
+# Cloud IDE
+Open up the cloud IDE, and create the "staging" folder under the models, this is how we define the initial layer of models that clean the data
+
+Then, in staging create the *schema.yml* file and edit like that, database it bigquery dataset, staging is the name of our first layer of data changes, version is always in the schema:
+```code schema.yml
+version: 2
+
+sources:
+  - name: staging
+    database: ny-rides-adam
+    schema: ny_taxi
+
+    tables:
+      - name: green_taxi
+      - name: yellow_taxi
+```
+then click 'Generate model' at the top of the - name: green_taxi, and save the generated *stg_staging__green_taxi.sql* file. Move it to the upper 'staging' folder and remove the duplicated one. Rename file to stg_green_taxi.sql. Then go to schema and follow the same steps with yellow taxi data.
+
+Then run the following command from the terminal at the bottom:
+```code terminal
+dbt build
+```
+
+Then delete the 'examples' folder in the models directory.
+
+# Macros
+
+In the taxi_rides_ny create a new folder: *macros*, then create a file *get_payment_type_description.sql* inside:
+```sql get_payment_type_description.sql
+{#
+    This macro returns the description of the payment_type 
+#}
+
+{% macro get_payment_type_description(payment_type) -%}
+
+    case {{ dbt.safe_cast("payment_type", api.Column.translate_type("integer")) }}  
+        when 1 then 'Credit card'
+        when 2 then 'Cash'
+        when 3 then 'No charge'
+        when 4 then 'Dispute'
+        when 5 then 'Unknown'
+        when 6 then 'Voided trip'
+        else 'EMPTY'
+    end
+
+{%- endmacro %}
+```
+
+then, add the payment description to the stg_green_taxi.sql table:
+```sql stg_green_taxi.sql
+
+renamed as (
+
+    select
+        vendorid,
+        lpep_pickup_datetime,
+        lpep_dropoff_datetime,
+        store_and_fwd_flag,
+        ratecodeid,
+        pulocationid,
+        dolocationid,
+        passenger_count,
+        trip_distance,
+        fare_amount,
+        extra,
+        mta_tax,
+        tip_amount,
+        tolls_amount,
+        ehail_fee,
+        improvement_surcharge,
+        total_amount,
+        payment_type,
+        {{ get_payment_type_description('payment_type') }} as payment_type_descripted,
+        trip_type,
+        congestion_surcharge
+
+    from source
+
+)
+```
+
+# Packages
+in the 04-analytics-engineering/taxi_rides_ny directory in the dbt cloud dashboard create a new file 'packages.yml', and paste the following to import the dbt_utils package (https://hub.getdbt.com/dbt-labs/dbt_utils/latest/), that is a part of the dbt hub:
+```code packages.yml
+packages:
+  - package: dbt-labs/dbt_utils
+    version: 1.1.1
+```
+
+Then install the dependencies:
+```code terminal
+dbt deps
+```
+
+Add the generate surrogate key from the dbt utils to the green taxi data:
+```sql stg_green_taxi.sql
+with 
+
+source as (
+
+    select * from {{ source('staging', 'green_taxi') }}
+
+),
+
+renamed as (
+
+    select
+        {{ dbt_utils.generate_surrogate_key(['vendorid', 'lpep_pickup_datetime']) }} as tripid,
+        vendorid,
+        lpep_pickup_datetime,
+        lpep_dropoff_datetime,
+        store_and_fwd_flag,
+        ratecodeid,
+        pulocationid,
+        dolocationid,
+        passenger_count,
+        trip_distance,
+        fare_amount,
+        extra,
+        mta_tax,
+        tip_amount,
+        tolls_amount,
+        ehail_fee,
+        improvement_surcharge,
+        total_amount,
+        payment_type,
+        {{ get_payment_type_description('payment_type') }} as payment_type_descripted,
+        trip_type,
+        congestion_surcharge
+
+    from source
+
+)
+
+select * from renamed
+```
+
+# Green data transformation
+Now, let's copy the final code from the zoomcamp github repo for the green taxi staging (https://github.com/DataTalksClub/data-engineering-zoomcamp/blob/main/04-analytics-engineering/taxi_rides_ny/models/staging/stg_green_tripdata.sql):
+```sql stg_green_taxi.sql
+{{
+    config(
+        materialized='view'
+    )
+}}
+
+with taxi as 
+(
+  select *,
+    row_number() over(partition by vendorid, lpep_pickup_datetime) as rn
+  from {{ source('staging','green_taxi') }}
+  where vendorid is not null 
+)
+select
+    -- identifiers
+    {{ dbt_utils.generate_surrogate_key(['vendorid', 'lpep_pickup_datetime']) }} as tripid,
+    {{ dbt.safe_cast("vendorid", api.Column.translate_type("integer")) }} as vendorid,
+    {{ dbt.safe_cast("ratecodeid", api.Column.translate_type("integer")) }} as ratecodeid,
+    {{ dbt.safe_cast("pulocationid", api.Column.translate_type("integer")) }} as pickup_locationid,
+    {{ dbt.safe_cast("dolocationid", api.Column.translate_type("integer")) }} as dropoff_locationid,
+    
+    -- timestamps
+    cast(lpep_pickup_datetime as timestamp) as pickup_datetime,
+    cast(lpep_dropoff_datetime as timestamp) as dropoff_datetime,
+    
+    -- trip info
+    store_and_fwd_flag,
+    {{ dbt.safe_cast("passenger_count", api.Column.translate_type("integer")) }} as passenger_count,
+    cast(trip_distance as numeric) as trip_distance,
+    {{ dbt.safe_cast("trip_type", api.Column.translate_type("integer")) }} as trip_type,
+
+    -- payment info
+    cast(fare_amount as numeric) as fare_amount,
+    cast(extra as numeric) as extra,
+    cast(mta_tax as numeric) as mta_tax,
+    cast(tip_amount as numeric) as tip_amount,
+    cast(tolls_amount as numeric) as tolls_amount,
+    cast(ehail_fee as numeric) as ehail_fee,
+    cast(improvement_surcharge as numeric) as improvement_surcharge,
+    cast(total_amount as numeric) as total_amount,
+    coalesce({{ dbt.safe_cast("payment_type", api.Column.translate_type("integer")) }},0) as payment_type,
+    {{ get_payment_type_description("payment_type") }} as payment_type_description
+from taxi
+where rn = 1
+
+-- dbt build --select <model_name> --vars '{'is_test_run': 'false'}'
+{% if var('is_test_run', default=true) %}
+
+  limit 100
+
+{% endif %}
+```
+
+We don't need this part of the code, as everything by default is a view, we can change the default in options:
+```sql
+{{
+    config(
+        materialized='view'
+    )
+}}
+```
+
+Also, if we type __ at the beginning, dbt console will give us hints and ready-to-use blocks like the config.
+
+You can run build to see that the variable set the limit to 100, because we didn't provide the ```--vars {'is_test_run':'false'}``` argument in the cli.
+
+Then run the same build, but providing the argument set to false and check the details of the system logs from the build process:
+```code terminal
+dbt build -select stg_green_taxi --vars '{'is_test_run': 'false'}'
+```
+
+# Yellow data transformation
+
+Then, head to github repo of the zoomcamp, and copy the stg_yellow_tripdata.sql code to the staging/stg_yellow_taxi.sql file in the dbt cloud, remember to switch the tripdata word to taxi, also in the green taxi data:
+
+```sql stg_yellow_taxi.sql
+{{ config(materialized='view') }}
+ 
+with taxi as 
+(
+  select *,
+    row_number() over(partition by vendorid, tpep_pickup_datetime) as rn
+  from {{ source('staging','yellow_taxi') }}
+  where vendorid is not null 
+)
+select
+   -- identifiers
+    {{ dbt_utils.generate_surrogate_key(['vendorid', 'tpep_pickup_datetime']) }} as tripid,    
+    {{ dbt.safe_cast("vendorid", api.Column.translate_type("integer")) }} as vendorid,
+    {{ dbt.safe_cast("ratecodeid", api.Column.translate_type("integer")) }} as ratecodeid,
+    {{ dbt.safe_cast("pulocationid", api.Column.translate_type("integer")) }} as pickup_locationid,
+    {{ dbt.safe_cast("dolocationid", api.Column.translate_type("integer")) }} as dropoff_locationid,
+
+    -- timestamps
+    cast(tpep_pickup_datetime as timestamp) as pickup_datetime,
+    cast(tpep_dropoff_datetime as timestamp) as dropoff_datetime,
+    
+    -- trip info
+    store_and_fwd_flag,
+    {{ dbt.safe_cast("passenger_count", api.Column.translate_type("integer")) }} as passenger_count,
+    cast(trip_distance as numeric) as trip_distance,
+    -- yellow cabs are always street-hail
+    1 as trip_type,
+    
+    -- payment info
+    cast(fare_amount as numeric) as fare_amount,
+    cast(extra as numeric) as extra,
+    cast(mta_tax as numeric) as mta_tax,
+    cast(tip_amount as numeric) as tip_amount,
+    cast(tolls_amount as numeric) as tolls_amount,
+    cast(0 as numeric) as ehail_fee,
+    cast(improvement_surcharge as numeric) as improvement_surcharge,
+    cast(total_amount as numeric) as total_amount,
+    coalesce({{ dbt.safe_cast("payment_type", api.Column.translate_type("integer")) }},0) as payment_type,
+    {{ get_payment_type_description('payment_type') }} as payment_type_description
+from taxi
+where rn = 1
+
+-- dbt build --select <model.sql> --vars '{'is_test_run: false}'
+{% if var('is_test_run', default=true) %}
+
+  limit 100
+
+{% endif %}
+```
+
+# Dimension and fact tables
+1. Create the 'core' folder in the 'models' directory
+2. Create the *dim_zones.sql* file in the 'core' folder, this dimensional table will contain the supportive data about the pickup and dropoff zones.
+3. Go to file *taxi_zone_lookup.csv* in the github repo: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/04-analytics-engineering/taxi_rides_ny/seeds, click 'raw' and copy the content.
+4. in the 'seeds' folder, create the *taxi_zone_lookup.csv* file and paste the previously copied content.
+5. Run 'build'
+6. Open the models/core folder in the zoomcamp repo: https://github.com/DataTalksClub/data-engineering-zoomcamp/tree/main/04-analytics-engineering/taxi_rides_ny/models/core and copy the *dim_zones.sql* content, then run build
+7. Create *fact_trips.sql* file in the models/core folder. We are close to the BI now, so we want to make it a table instead of a view for the better performance for our stakeholders:
+```sql fact_trips.sql
+{{
+    config(
+        materialized='table'
+    )
+}}
+
+with green_taxi as (
+    select *, 
+        'Green' as service_type
+    from {{ ref('stg_green_taxi') }}
+), 
+yellow_taxi as (
+    select *, 
+        'Yellow' as service_type
+    from {{ ref('stg_yellow_taxi') }}
+), 
+trips_unioned as (
+    select * from green_taxi
+    union all 
+    select * from yellow_taxi
+), 
+dim_zones as (
+    select * from {{ ref('dim_zones') }}
+    where borough != 'Unknown'
+)
+select trips_unioned.tripid, 
+    trips_unioned.vendorid, 
+    trips_unioned.service_type,
+    trips_unioned.ratecodeid, 
+    trips_unioned.pickup_locationid, 
+    pickup_zone.borough as pickup_borough, 
+    pickup_zone.zone as pickup_zone, 
+    trips_unioned.dropoff_locationid,
+    dropoff_zone.borough as dropoff_borough, 
+    dropoff_zone.zone as dropoff_zone,  
+    trips_unioned.pickup_datetime, 
+    trips_unioned.dropoff_datetime, 
+    trips_unioned.store_and_fwd_flag, 
+    trips_unioned.passenger_count, 
+    trips_unioned.trip_distance, 
+    trips_unioned.trip_type, 
+    trips_unioned.fare_amount, 
+    trips_unioned.extra, 
+    trips_unioned.mta_tax, 
+    trips_unioned.tip_amount, 
+    trips_unioned.tolls_amount, 
+    trips_unioned.ehail_fee, 
+    trips_unioned.improvement_surcharge, 
+    trips_unioned.total_amount, 
+    trips_unioned.payment_type, 
+    trips_unioned.payment_type_description
+from trips_unioned
+inner join dim_zones as pickup_zone
+on trips_unioned.pickup_locationid = pickup_zone.locationid
+inner join dim_zones as dropoff_zone
+on trips_unioned.dropoff_locationid = dropoff_zone.locationid
+```
+
+to build the final table that combines two fact tables and a dimensional table, let's run the build +model+ (upstream/downstream), as it will also build or refresh all the dependencies and parent tables. Remember that we have limited the green and yellow tables to 100 rows in the test mode, so to build the production fact table, we need to pass the following command with variables:
+```code terminal
+dbt build --select +fact_trips+ --vars '{'is_test_run': 'false'}'
+```
+
+
+
+
+
+

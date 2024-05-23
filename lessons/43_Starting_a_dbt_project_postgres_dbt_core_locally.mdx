@@ -1,0 +1,49 @@
+# Starting a dbt project locally
+1. Install dbt core with postgres adapter to be able to use the CLI, create .dbt folder and profiles.yml:
+```terminal
+python -m pip install dbt-core dbt-postgres
+mkdir ~/.dbt
+touch ~/.dbt/profiles.yml
+```
+2. Open the profiles.yml with VSCode and paste the following config, profiles define connection to different databases, like postgres, or bigquery. To use dbt with postgres and bigquery locally, we have to install different adapters, unlink the one that we don't need at the moment, and then link the one that we need and so on and so forth:
+```yml profiles.yml
+# pg-de-zoomcamp:
+#   outputs:
+#     dev:
+#       dataset: dbt_adam_ksiazek
+#       keyfile: ny-rides-adam-6deb3ca16f64.json
+#       method: service-account
+#       project: ny-rides-adam
+#       threads: 4
+#       type: bigquery
+#   target: dev
+taxi:
+  outputs:
+    dev:
+      dbname: taxi
+      host: localhost
+      pass: root
+      port: 5432
+      schema: dbt_adam_ksiazek
+      threads: 4
+      type: postgres
+      user: root
+  target: dev
+```
+3. Create a new github repo, clone using terminal ```git clone <https>``` and open in VSCode
+4. Run docker compose up to host pgAdmin and postgres locally, in pgAdmin create a new schema dbt_your_name
+5. Run dbt init inside the cloned repository:
+```code terminal
+dbt init
+```
+name:taxi
+enter a number: 1
+the rest accordingly to the profiles.yml data
+
+logs and taxi folders will be created in the given directory.
+
+6. Move the dbt_project.yml to the main directory /ny_taxi_rides_zoomcamp, outside the newly created taxi folder
+7. Run this command to check connection and potential errors:
+```code terminal
+dbt debug
+```
