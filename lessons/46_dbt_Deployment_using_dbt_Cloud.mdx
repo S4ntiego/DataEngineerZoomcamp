@@ -1,0 +1,41 @@
+# What is deployment
+- process of running the models we created in our development environment in a production environment
+- development and later deployment allows to continue building models and testing them without affecting the production environment
+- a deployment environment will normally have a different schema in the data warehouse and ideally a different user
+- a development - deployment workflow resemble these steps:
+    - develop in user branch
+    - open a pull request to merge into the main branch
+    - merge the user dev branch to the main branch
+    - run the new models in the production environment using the main branch
+    - schedule the models
+
+# Production deployment
+dbt Cloud dashboard:
+1) Commit all the changes -> Make a pull request -> Merge dev branch with main branch -> go to Deploy in the navbar -> Environments -> + Create Environment -> Environment name: Production, Dataset: taxi_prod -> Save -> Create a taxi_prod dataset in the bigquery
+
+2) Deploy -> Jobs -> + Create job -> Deploy job -> Job name: nightly, Description: This is where the data hits the production, change command to ```code dbt build --vars '{'is_test_run': false}'``` Generate docs on run, Run source freshness, Run on schedule (Intervals/Every 12 hours/Without sunday) -> Save -> Run now
+
+3) Settings -> Account Settings -> Projects -> taxi -> Edit -> Documentation -> Nightly -> Source freshness -> Nightly -> Save
+
+4) Deploy -> Jobs -> + Create Job -> Continuous integration job -> Job name: CI checks, Description: Avoid breaking production, in Execution settings we could add commands like ```dbt test documented_models```, which would check if all models are documented and so on and so forth, default command is: ```dbt build --select state:modified+```, which means run anything that was modified and its children, or we can run tests only, etc.
+
+
+API trigger is useful to trigger the deployment via something like the Airflow, Mage, Dagster, Prefect, etc.
+
+Running a dbt project in production:
+- dbt cloud includes a scheduler where to create jobs to run in production
+- a single job can run multiple commands
+- jobs can be triggered manually or on schedule
+- each job will keep a log of the runs over time
+- each run will have the logs for each command
+- a job could also generate documentation, that could be viewed under the run information
+- if dbt source freshness was run, the results can also be viewed at the end of a job
+
+# What is Continuous Integration (CI)
+- CI is the practice of regularly merge development branches into a central repository, after which automated builds and tests are run
+- the goal is to reduce adding bugs to the production code and maintain a more stable project
+- dbt allows us to enable CI on pull requests
+- enabled via webhooks from GitHub or GitLab
+- when a PR is ready to be merged, a webhooks is received in dbt Cloud that will enqueue a new run of the specified job
+- the run of the CI job will be against a temporary schema
+- no PR will be able to be merged unless the run has been completed successfully
