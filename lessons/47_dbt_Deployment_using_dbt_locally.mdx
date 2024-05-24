@@ -1,0 +1,32 @@
+In order to deploy to production using the dbt locally, let's make another, prod, profile in the *profiles.yml* file located in the root/.dbt directory:
+```yml profiles.yml
+taxi:
+  # by default dbt build will target dev, dbt build -t prod will target prod
+  target: dev
+  outputs:
+    dev:
+      dbname: taxi
+      host: localhost
+      pass: root
+      port: 5432
+      schema: dbt_adam_ksiazek
+      threads: 4
+      type: postgres
+      user: root
+    prod:
+      dbname: production
+      host: localhost
+      pass: root
+      port: 5432
+      schema: master
+      threads: 4
+      type: postgres
+      user: root
+```
+
+Then, we need to target this profile while building the dbt project:
+```code terminal
+dbt build -t prod
+```
+
+We can then schedule this command to run daily, weekly, etc, with tools like Dagster, Airflow, or with a CRON job.
