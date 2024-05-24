@@ -1,0 +1,53 @@
+Taxi datasets in the csv format: https://github.com/DataTalksClub/nyc-tlc-data/?tab=readme-ov-file
+
+We can also load this data from google marketplace, under the *NYC TLC Trips*
+https://console.cloud.google.com/marketplace/product/city-of-new-york/nyc-tlc-trips
+
+1. View Dataset -> Click 3 dots on tlc_green_trips_2019, 2020 & the same for yellow trips, and query these tables.
+2. In our project, create new dataset called 'trips_data_all'
+3. Create a new table green_tripdata from select:
+```sql
+CREATE TABLE 'ny-rides-adam.trips_data_all.green_tripdata' AS
+SELECT * FROM 'bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2019'
+```
+4. Do the same for 2020, and the same for yellow_tripdata 2019 and 2020, but for 2020, just change the CREATE into INSERT:
+```sql
+INSERT INTO 'ny-rides-adam.trips_data_all.green_tripdata'
+SELECT * FROM 'bigquery-public-data.new_york_taxi_trips.tlc_green_trips_2020'
+```
+
+5. Make changes to fit the schema previously achieved by using Mage AI:
+```sql
+  -- Fixes yellow table schema
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN vendor_id TO VendorID;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN pickup_datetime TO tpep_pickup_datetime;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN dropoff_datetime TO tpep_dropoff_datetime;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN rate_code TO RatecodeID;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN imp_surcharge TO improvement_surcharge;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN pickup_location_id TO PULocationID;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.yellow_tripdata`
+  RENAME COLUMN dropoff_location_id TO DOLocationID;
+
+  -- Fixes green table schema
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN vendor_id TO VendorID;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN pickup_datetime TO lpep_pickup_datetime;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN dropoff_datetime TO lpep_dropoff_datetime;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN rate_code TO RatecodeID;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN imp_surcharge TO improvement_surcharge;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN pickup_location_id TO PULocationID;
+ALTER TABLE `taxi-rides-ny-339813-412521.trips_data_all.green_tripdata`
+  RENAME COLUMN dropoff_location_id TO DOLocationID;
+```
+
