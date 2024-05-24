@@ -1,0 +1,22 @@
+1) Go to https://lookerstudio.google.com/ and login to your google account
+2) Create -> Data Source -> BigQuery -> AUTHORISE -> ny-rides-adam -> taxi_prod -> fact_trips -> CONNECT
+3) Switch from Sum to None: ratecodeid, dropoff_locationid, pickup_locationid, payment_type, trip_type, vendorid -> CREATE REPORT -> ADD TO REPORT
+4) Add a chart -> Timeseries -> Breakdown Dimension: Service Type
+5) Add a control -> Date range control (it will make this date default for every chart in the project) -> From 1st January 2021 to 31st January 2021
+6) Add a Pie Chart with Payment Method excluding EMPTY
+7) Add a table with heatmap for the trips by the pickup zone
+8) Add scorecards with avg tip amount and total trips amount
+9) Add a stacked column chart with total trips per weekday and taxi type, add a custom WEEKDAY field:
+```sql
+CASE
+  WHEN WEEKDAY(Date) = 0 THEN 'Sunday'
+  WHEN WEEKDAY(Date) = 1 THEN 'Monday'
+  WHEN WEEKDAY(Date) = 2 THEN 'Tuesday'
+  WHEN WEEKDAY(Date) = 3 THEN 'Wednesday'
+  WHEN WEEKDAY(Date) = 4 THEN 'Thursday'
+  WHEN WEEKDAY(Date) = 5 THEN 'Friday'
+  WHEN WEEKDAY(Date) = 6 THEN 'Saturday'
+END
+```
+
+A link to the completed dashboard: https://lookerstudio.google.com/reporting/a669833e-0b0a-41a8-b07f-a9699903866d
