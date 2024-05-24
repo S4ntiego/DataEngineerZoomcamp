@@ -1,0 +1,56 @@
+# Data Processing
+
+There are two types of data processing: Batch and Streaming
+
+*Batch Processing* is gathering and processing data in some intervals, like weekly, daily, hourly, every 3 minutes, etc., out of which daily and hourly are the most popular ones.
+
+*Streaming* on the other side is reponsible for processing near-live data, eg. a taxi driver sends an "event" from the machine that the ride has started, then the event is sent to the data stream, then to some processor, and then again to another data stream.
+
+Batch processing technologies:
+- Python Scripts
+- SQL
+- Spark
+- Flink
+- Other
+
+Example Batch *Workflow*: Data Lake / CSV / Parquet / etc -> Python -> SQL -> Spark -> Python
+
+Advantages of Batch Processing:
+- Easy to manage
+- Retry
+- Scalability
+
+Disadvantages:
+- Delay
+
+Around 80% of data processing is being done through the Batch Processing (at least in the companies that Alexey used to work for).
+
+# Introduction to Spark
+
+Apache Spark is an analytics engine for large-scale data processing. It is based on paralellism.
+
+It pulls the data from our database, data lake, etc. into it's machines/executors, does something with the data and then again puts the database.
+
+In one cluster we can have tens, hundreds, even thousands of Spark machines doing the same data processing.
+
+It can be used for both the streaming and batch processing.
+
+It has adapters for many programming languages, like java & scala, R, or Python (the most popular one, pySpark)
+
+# When to use Spark
+
+Typically when the data is located in the data lake (S3/Google Cloud/Azure, etc). Usually used for the same data processing as with SQL.
+Nowadays we can also use things like Hive or Presto/Athena on our data lake data to do the processing and put the data back into the data lake.
+
+!! If we can express our job as a SQL query, then we should go for Hive, or Presto/Athena or BigQuery, but sometimes we can't express our job with SQL. !! 
+
+Usually things that cannot be expressed with SQL are related to machine learning and training models.
+
+Usual workflow for *traning the model*:
+Raw Data -> Data Lake -> SQL (Athena)(joins, transformations) -> Spark -> Python training the model
+
+*Using the model*:
+Raw Data -> Data Lake -> SQL (Athena)(joins, transformations) -> Spark -> Python training the model -> Spark applying the model -> Data Lake
+
+
+
