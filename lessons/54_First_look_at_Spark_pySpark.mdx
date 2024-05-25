@@ -26,7 +26,7 @@ df = df.repartition(24)
 df.write.parquet('fhvhv/2021/01/')
 df = spark.read.parquet('fhvhv/2021/01/')
 df.printSchema()
-df.show()
+df.select('pickup_datetime', 'dropoff_datetime', 'PULocationID', 'DOLocationID').filter(df.hvfhs_license_num == 'HV0003').show()
 ```
 
 We do repartition to use spark clusters more efficiently, one cluster can work with one file, when we have 6 clusters and one file, 5 will be idle.

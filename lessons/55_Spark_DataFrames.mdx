@@ -1,0 +1,53 @@
+# Spark DataFrames
+
+The reason behind using pySpark is machine learning tasks and very big datasets (1TB+), which Pandas would never be able to process, or it would take enormous amount of time.
+
+It is also easier to test python code and python functions than the sql one.
+
+```python
+df = spark.read.parquet('fhvhv/2021/01/')
+df \
+    .select('pickup_datetime', 'dropoff_datetime', 'PULocationID', 'DOLocationID') \
+    .filter(df.hvfhs_license_num == 'HV0003') \
+    .show()
+#cut first letter from the base num, convert the rest to integer, if it can be divided by 7, return id like s/num:03x(in hex format)
+def crazy_stuff(base_num):
+    num = int(base_num[1:])
+    if num % 7 == 0:
+        return f's/{num:03x}'
+    elif num % 3 == 0:
+        return f'a/{num:03x}'
+    else:
+        return f'e/{num:03x}'
+crazy_stuff('B02884')
+#convert crazy stuff to user defined function (expand the standard pyspark.sql functions)
+crazy_stuff_udf = F.udf(crazy_stuff, returnType=types.StringType())
+df \
+    .withColumn('pickup_date', F.to_date(df.pickup_datetime)) \
+    .withColumn('dropoff_date', F.to_date(df.dropoff_datetime)) \
+    .withColumn('base_id', crazy_stuff_udf(df.dispatching_base_num)) \
+    .select('pickup_date', 'dropoff_date', 'PULocationID', 'DOLocationID', 'base_id') \
+    .show()
+```
+
+- withColumn adds new column to the dataframe
+- we can also overwrite existsing columns using withColumn instead of adding a new one
+- pyspark.sql.functions is a set of predefined functions for pyspark, such as abs, to_date, etc.
+
+# Actions vs Transformations
+
+Transformations (lazy, not executed immediately, df -> select() -> filter()):
+- Filtering
+- Selecting Column
+- Joins
+- Group By
+
+Actions (eager, executed immediately, show()):
+- Show
+- Take
+- Head
+- Write
+
+
+
+
