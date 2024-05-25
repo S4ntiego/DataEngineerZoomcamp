@@ -1,0 +1,72 @@
+# Install Java and Spark on the Google Linux Virtual Machine
+
+```code terminal
+cd .ssh
+ssh de-zoomcamp
+wget https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_linux-x64_bin.tar.gz
+tar xzfv openjdk-11.0.2_linux-x64_bin.tar.gz
+mkdir spark
+mv jdk-11.0.2 ~/spark
+rm openjdk-11.0.2_linux-x64_bin.tar.gz
+export JAVA_HOME="${HOME}/spark/jdk-11.0.2"
+export PATH="${JAVA_HOME}/bin:${PATH}"
+cd spark
+wget https://archive.apache.org/dist/spark/spark-3.3.2/spark-3.3.2-bin-hadoop3.tgz
+tar xzfv spark-3.3.2-bin-hadoop3.tgz
+rm spark-3.3.2-bin-hadoop3.tgz
+export SPARK_HOME="${HOME}/spark/spark-3.3.2-bin-hadoop3"
+export PATH="${SPARK_HOME}/bin:${PATH}"
+spark-shell
+val data = 1 to 10000
+val distData = sc.parallelize(data)
+distData.filter(_ < 10).collect()
+:quit
+cd
+export PYTHONPATH="${SPARK_HOME}/python/:$PYTHONPATH"
+export PYTHONPATH="${SPARK_HOME}/python/lib/py4j-0.10.9.5-src.zip:$PYTHONPATH"
+nano .bashrc
+```
+
+*py4j-0.10.9.5-src.zip must match exactly the name in our spark/spark-3.3.2-bin-hadoop3/python folder*
+
+paste at the end of the .bashrc file, control+s, control+x:
+```code terminal
+export JAVA_HOME="${HOME}/spark/jdk-11.0.2"
+export PATH="${JAVA_HOME}/bin:${PATH}"
+export SPARK_HOME="${HOME}/spark/spark-3.3.2-bin-hadoop3"
+export PATH="${SPARK_HOME}/bin:${PATH}"
+```
+
+Then, open up Visual Studio Code, connect to VM, and open ports 8888 (Jupyter) & 4040 (Spark), then open jupyter notebook:
+```code terminal
+mkdir notebooks
+cd notebooks
+jupyter notebook
+```
+
+Jupyter Notebook -> New -> Python3:
+```python jupyter
+import pyspark
+pyspark.__version__
+pyspark.__file__
+from pyspark.sql import SparkSession
+#create local cluster, use all CPUs, name our project 'test', if exists, connect, if not, create
+spark = SparkSession.builder.master("local[*]").appName('test').getOrCreate()
+!wget https://s3.amazonaws.com/nyc-tlc/misc/taxi+_zone_lookup.csv
+!head taxi+_zone_lookup.csv
+df = spark.read.option("header", "true").csv('taxi+_zone_lookup.csv')
+df.show()
+df.write.parquet('zones')
+
+```
+
+using *!* at the beginning, we can use terminal commands like ls, wget, head, etc
+
+1. Download and extract Open JDK 11 to get Java, define Java location as /spark/jdk-11.0.2 and add it to PATH
+2. Download and extract Spark 3.3.2, define Spark location as /spark/spark-3.3.2-bin-hadoop3 and add it to PATH
+(export PATH="${SPARK_HOME}/bin:${PATH}") - this appends the PATH with the bin directory of Spark, so we can execute binaries without specifying the full path
+3. Run Spark with spark-shell, test, then quit
+4. Attach new PATHS to .bashrc, not to type these PATHS each time starting a VM
+5. Add PySpark to PYTHONPATH, so Python can localize it
+6. Connect VSCode to VM via SSH, open port 8888, create notebooks directory and open jupyter in there
+7. Open up Jupyter Notebook at localhost:8888 and import pyspark
