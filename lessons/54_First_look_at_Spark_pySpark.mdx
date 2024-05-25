@@ -1,0 +1,39 @@
+```code terminal
+cd data-engineering-zoomcamp/05-batch/code
+export PYTHONPATH="${SPARK_HOME}/python/:$PYTHONPATH"
+export PYTHONPATH="${SPARK_HOME}/python/lib/py4j-0.10.9.5-src.zip:$PYTHONPATH"
+jupyter notebook
+```
+
+2021 January High Volume For-Hire Vehicle Trip Records: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+Without InferSchema true, Spark will infer every column as string
+
+```python 04_pyspark.ipynb
+import pyspark
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+spark = SparkSession.builder \
+    .master("local[*]") \
+    .appName('test') \
+    .getOrCreate()
+!wget https://d37ci6vzurychx.cloudfront.net/trip-data/fhvhv_tripdata_2021-01.parquet
+!wc -l fhvhv_tripdata_2021-01.parquet
+df = spark.read \
+    .option("header", "true") \
+    .option("InferSchema", "true") \
+    .parquet('fhvhv_tripdata_2021-01.parquet')
+df = df.repartition(24)
+df.write.parquet('fhvhv/2021/01/')
+df = spark.read.parquet('fhvhv/2021/01/')
+df.printSchema()
+df.show()
+```
+
+We do repartition to use spark clusters more efficiently, one cluster can work with one file, when we have 6 clusters and one file, 5 will be idle.
+Repartition is quite expensive in terms of resources needed for that operation.
+
+wget - download from the link
+wc - list number of records in a file
+head -n *number of rows* *filename* > *filename* - save first n rows of a file to the new file
+CTRL + D / CTRL + Shift + L to select the same word in multiple locations in VSCode
+
