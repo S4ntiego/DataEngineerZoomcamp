@@ -1,0 +1,85 @@
+# Links
+
+Yellow taxi January 2021: https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2021-01.parquet
+Green taxi January 2021: https://d37ci6vzurychx.cloudfront.net/trip-data/green_tripdata_2021-01.parquet
+High Volume For-Hire Vehicle Trip Records January 2021: https://d37ci6vzurychx.cloudfront.net/trip-data/fhvhv_tripdata_2021-01.parquet
+
+mkdir -p - create also a parent directory if it doesn't exist
+gzip - compress the file and remove the original one
+=$1 - these values will be passed through the command line
+set -e - if the for loop will pass with non-zero code, exit the loop (for the latest year, some months may not be available, so the loop won't go from 1 to 12)
+zcat - view the content of the file, works also with zipped files, we can pass additional parameters after ```path |``` like head -n 10 or wc -l 
+
+To install wget on mac:
+With Homebrew:
+```code terminal
+brew install wget
+```
+
+Without Homebrew:
+```code terminal
+curl -# "http://ftp.gnu.org/gnu/wget/wget-1.17.1.tar.xz" -o "wget.tar.xz"
+tar xf wget.tar.xz
+cd wget-1.17.1
+./configure --with-ssl=openssl -with-libssl-prefix=/usr/local/ssl && make -j8 && make install
+```
+
+# Bash script for downloading the data
+```code 'download_data.sh'
+#!/bin/bash
+set -e
+
+TAXI_TYPE=$1
+YEAR=$2
+URL_PREFIX="https://d37ci6vzurychx.cloudfront.net/trip-data"
+
+for MONTH in {1..12}; do
+    FMONTH=`printf "%02d" ${MONTH}`
+    URL="${URL_PREFIX}/${TAXI_TYPE}_tripdata_${YEAR}-${FMONTH}.parquet"
+    LOCAL_PREFIX="data/raw/${TAXI_TYPE}/${YEAR}/${FMONTH}"
+    LOCAL_FILE="${TAXI_TYPE}_tripdata_${YEAR}_${FMONTH}.parquet"
+    LOCAL_PATH="${LOCAL_PREFIX}/${LOCAL_FILE}"
+
+    echo "downloading ${URL} to ${LOCAL_PATH}"
+    mkdir -p ${LOCAL_PREFIX}
+    wget ${URL} -O ${LOCAL_PATH}
+    echo "compressing ${LOCAL_PATH}"
+
+    gzip ${LOCAL_PATH}
+done
+```
+
+```code terminal
+chmod +x download_data.sh   
+./download_data.sh yellow 2021
+./download_data.sh green 2021
+./download_data.sh yellow 2020
+./download_data.sh green 2020
+```
+
+# Jupyter Notebook with Taxi Data
+Create new jupyter notebook 05_taxi_scheme.ipynb
+```python 
+import pyspark
+from pyspark.sql import SparkSession
+from pyspark.sql import types
+spark = SparkSession.builder \
+    .master("local[*]") \
+    .appName("test") \
+    .getOrCreate()
+
+year = 2021
+for month in range(1,13):
+    print(f'processing data for {year}/{month}')
+    input_path=f'data/raw/green/{year}/{month}/'
+    output_path=f'data/pq/green/{year}/{month}/'
+    
+    df = spark.read \
+    .option("header", "true")
+    .option("InferSchema", "true")
+    .parquet(input_path)
+
+    df \
+        .repartition(4)
+        .write.parquet(output_path)
+```
