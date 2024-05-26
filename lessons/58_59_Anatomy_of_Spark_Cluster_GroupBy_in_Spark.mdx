@@ -1,0 +1,76 @@
+# Spark Cluster
+
+We, or our orchestrator like Airflow, initiate the Spark code package, we submit it to Spark Master (port 4040 in localhost) inside the Cluster. With spark submit we can submit our Spark code to the master.
+
+In the cluster, there are also Executors, which do the calculations. Master sends them instructions what to do and which job to complete. Executors pull the data, and then process it. Each executor pulls a partition from the dataframe (like we did .repartition(24), there are 24 partitions to pull in total). Dataframes usually live inside the Amazon AWS S3 or Google Cloud Storage. 
+
+Nowadays Spark Cluster and Dataframe usually live in the same Data Center due to the existence of the S3 / GCS / Azure, etc., so Hadoop is not to popular anymore (it used to store data inside the executors, and send only the code to the cluster). We pull data from Cloud Storage, and write it back to Cloud Storage.
+
+# GroupBy in Spark
+
+Create new Jupyter Notebook '07_groupby_join'
+
+```python 07_groupby_join
+import pyspark
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .master("local[*]") \
+    .appName('test') \
+    .getOrCreate()
+
+df_green = spark.read.parquet('data/pq/green/*/*')
+df_green.createOrReplaceTempView('green')
+df_green_revenue = spark.sql("""
+SELECT 
+    date_trunc('hour', lpep_pickup_datetime) AS hour, 
+    PULocationID AS zone,
+
+    SUM(total_amount) AS amount,
+    COUNT(1) AS number_records
+FROM
+    green
+WHERE
+    lpep_pickup_datetime >= '2020-01-01 00:00:00'
+GROUP BY
+    1, 2
+ORDER BY
+    1, 2
+""")
+# repartition into 20 partitions, then save as green.parquet
+df_green_revenue \
+    .repartition(20) \
+    .write.parquet('data/report/revenue/green', mode='overwrite')
+df_yellow = spark.read.parquet('data/pq/yellow/*/*')
+df_yellow.createOrReplaceTempView('yellow')
+df_yellow_revenue = spark.sql("""
+SELECT 
+    date_trunc('hour', tpep_pickup_datetime) AS hour, 
+    PULocationID AS zone,
+
+    SUM(total_amount) AS amount,
+    COUNT(1) AS number_records
+FROM
+    yellow
+WHERE
+    tpep_pickup_datetime >= '2020-01-01 00:00:00'
+GROUP BY
+    1, 2
+""")
+df_yellow_revenue \
+    .repartition(20) \
+    .write.parquet('data/report/revenue/yellow', mode='overwrite')
+
+!ls -lhR data/report/
+```
+
+First executor is doing filtering, so data only >= 2020, and then it is doing initial group by, initial because one executor can process only one partition at a time. Each executor is filtering and grouping it's own partition, then it outputs H1, Z1, 100, 5, columns only for that given partition, remember that EACH EXECUTOR IS DOING THESE CALCULATIONS AND FILTERING AND GROUPING ON ITS OWN PART OF DATA! Let's call them 'Intermediate Results' or 'Subresults'.
+
+Then, data from each partition after the transformation is being combined into one. This part is called *Reshufling* (External merge sort), because Spark is shuffling data between different partitions. Hour and Zone are our grouping keys, Amount and Number of Records are additional columns.
+
+At the end, results with the same key must end up in the same partition! Then, Spark is doing grouping again in merged partitions for the records with the same keys. 
+
+```!ls -lhR data/report/``` - list all the files in the data/report with their size and date of creation, R means recursive, it will go into each directory in the given folder (report)
+```-l``` - use a long listing format
+```-s``` - size
+```-h``` - human readable
