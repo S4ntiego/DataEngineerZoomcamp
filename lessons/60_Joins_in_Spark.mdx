@@ -1,0 +1,53 @@
+# Joins in Spark
+Let's continue in the notebook from the lesson 58 and 59:
+```python 07_groupby_join
+df_green_revenue = spark.read.parquet('data/report/revenue/green')
+df_yellow_revenue = spark.read.parquet('data/report/revenue/yellow')
+
+df_green_revenue_tmp = df_green_revenue \
+    .withColumnRenamed('amount', 'green_amount') \
+    .withColumnRenamed('number_records', 'green_number_records')
+
+df_yellow_revenue_tmp = df_yellow_revenue \
+    .withColumnRenamed('amount', 'yellow_amount') \
+    .withColumnRenamed('number_records', 'yellow_number_records')
+
+# join two tables using outer join on hour and zone keys, full outer join is everything from green, yellow, and matching
+df_join = df_green_revenue_tmp.join(df_yellow_revenue_tmp, on=['hour', 'zone'], how='outer')
+
+# write to parquet to materialize the results and not compute these columns each time
+df_join.write.parquet('data/report/revenue/total', mode='overwrite')
+
+# load new file into the dataframe
+df_join = spark.read.parquet('data/report/revenue/total')
+
+# download zones lookup file
+!wget https://s3.amazonaws.com/nyc-tlc/misc/taxi+_zone_lookup.csv
+
+# read csv
+df_zones = spark.read.option("header", "true").csv('taxi+_zone_lookup.csv')
+
+# save parquet from csv in the zones folder
+df_zones.write.parquet('zones')
+
+# read parquet as dataframe
+df_zones = spark.read.option("header", True).parquet('zones/')
+
+# join dataframes based on zone and locationID
+df_result = df_join.join(df_zones, df_join.zone == df_zones.LocationID)
+
+# save merged dfs as new file without zone and locationID columns
+df_result.drop('LocationID', 'zone').write.parquet('tmp/revenue-zones')
+```
+
+# How joins work in Spark
+We have two datasets: yellow and green, each with a couple of different partitions
+In each partition we have a bunch of records, let's call them Y1, Y2, G1, G2, etc
+Y1 record consists of columns: Hour, Zone, Revenue, Number_of_Records
+For each record in each partition in each dataframe, we want to create a *Composite Key*, because we are joining on two columns, so key will consist of these two columns: Hour and Zone
+Then, the reshuffling happens, where the same Composite Key from both the green and yellow data lands in the same grouped partition. Algorithm doing the reshuffling is called *EXTERNAL MERGE SORT*
+
+# Broadcast exchange
+If we are joining a very big dataset with a very small dataset, the small dataset will be broadcasted to each executor (as it is one partition), so each partition of the big dataset (revenue) will have access to the whole small dataset (zones), and so there will be no need for reshuffling, the data will just get appended directly in the first executors stage.
+
+
